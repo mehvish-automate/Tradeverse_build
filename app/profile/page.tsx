@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
+import { getProgress } from "@/lib/progress";
 import { ageFromDob, useSession } from "@/lib/session";
 
 export default function ProfilePage() {
@@ -23,6 +25,22 @@ export default function ProfilePage() {
 function ProfileInner() {
   const router = useRouter();
   const { user, signOut } = useSession();
+  const [progress, setProgress] = useState({
+    streak: 0,
+    totalXp: 0,
+    plays: 0,
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    const p = getProgress(user.email);
+    setProgress({
+      streak: p.streak,
+      totalXp: p.totalXp,
+      plays: p.history.length,
+    });
+  }, [user]);
+
   if (!user) return null;
 
   const age = ageFromDob(user.dob);
@@ -49,8 +67,16 @@ function ProfileInner() {
       </div>
 
       <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Stat label="Current streak" value="0" hint="Play today to start one" />
-        <Stat label="XP" value="0" hint="Earn by answering correctly + fast" />
+        <Stat
+          label="Current streak"
+          value={`${progress.streak}`}
+          hint={progress.streak === 0 ? "Play today to start one" : `${progress.plays} days played`}
+        />
+        <Stat
+          label="XP"
+          value={progress.totalXp.toLocaleString()}
+          hint="Earn by answering correctly + fast"
+        />
         <Stat label="Leagues" value="0" hint="Create or join one in Phase 4" />
       </div>
 
