@@ -1,0 +1,60 @@
+import { Section } from "./Section";
+
+export function Vision() {
+  return (
+    <Section
+      eyebrow="Vision & positioning"
+      title="A daily 5-minute skill game Gen Z Indians play with their friends."
+      kicker="For first-job Gen Z Indians (22–28) who find the stock market intimidating, TradeVerse is the only markets platform that turns live market data into a daily visual skill game and friend-league — no trading, no real money."
+    >
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Pillar
+          eyebrow="Habit"
+          title="Duolingo-shaped"
+          body="Short daily sessions. Streaks. XP. Muscle memory for pattern recognition."
+        />
+        <Pillar
+          eyebrow="Social"
+          title="Dream11-shaped"
+          body="Friend leagues with weekly cycles. Bragging rights over the group chat."
+        />
+        <Pillar
+          eyebrow="Skill"
+          title="Zero money"
+          body="No brokerage, no KYC, no demat — ever. Competing on skill, not capital."
+        />
+      </div>
+
+      <div className="mt-10 rounded-xl border border-ink-700 bg-ink-900/40 p-6">
+        <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
+          The one-liner
+        </div>
+        <p className="mt-2 text-lg text-ink-100 md:text-xl">
+          <span className="text-brand-300">Mathiks</span> for markets,{" "}
+          <span className="text-brand-300">Duolingo</span> for instinct,{" "}
+          <span className="text-brand-300">WhatsApp</span> for the social spine.
+        </p>
+      </div>
+    </Section>
+  );
+}
+
+function Pillar({
+  eyebrow,
+  title,
+  body,
+}: {
+  eyebrow: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-xl border border-ink-700 bg-ink-900/40 p-6">
+      <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
+        {eyebrow}
+      </div>
+      <h3 className="mt-2 text-xl font-semibold">{title}</h3>
+      <p className="mt-2 text-sm text-ink-300">{body}</p>
+    </div>
+  );
+}
