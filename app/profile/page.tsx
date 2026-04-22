@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
+import { getMyLeagues } from "@/lib/leagues";
 import { getProgress } from "@/lib/progress";
 import { ageFromDob, useSession } from "@/lib/session";
 
@@ -29,15 +30,18 @@ function ProfileInner() {
     streak: 0,
     totalXp: 0,
     plays: 0,
+    leagues: 0,
   });
 
   useEffect(() => {
     if (!user) return;
     const p = getProgress(user.email);
+    const ls = getMyLeagues(user.email);
     setProgress({
       streak: p.streak,
       totalXp: p.totalXp,
       plays: p.history.length,
+      leagues: ls.length,
     });
   }, [user]);
 
@@ -77,7 +81,11 @@ function ProfileInner() {
           value={progress.totalXp.toLocaleString()}
           hint="Earn by answering correctly + fast"
         />
-        <Stat label="Leagues" value="0" hint="Create or join one in Phase 4" />
+        <Stat
+          label="Leagues"
+          value={`${progress.leagues}`}
+          hint={progress.leagues === 0 ? "Create or join one" : "View your leagues →"}
+        />
       </div>
 
       <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2">
