@@ -1,0 +1,142 @@
+// Seed universe for virtual portfolios. Static company metadata and a
+// deterministic daily price model so every user sees the same price
+// history for a given date.
+//
+// Phase 5+ can swap the price() function for real NSE EOD data without
+// changing any caller.
+
+export type Sector =
+  | "IT"
+  | "Banking"
+  | "FMCG"
+  | "Auto"
+  | "Pharma"
+  | "Energy"
+  | "Telecom"
+  | "Metals"
+  | "Infra"
+  | "Consumer";
+
+export type Stock = {
+  symbol: string;
+  name: string;
+  sector: Sector;
+  basePrice: number;
+  // Trend in % per year. Mock: affects the deterministic walk.
+  drift: number;
+  // Volatility target (daily, in %).
+  vol: number;
+};
+
+export const STOCKS: Stock[] = [
+  { symbol: "RELIANCE",   name: "Reliance Industries",     sector: "Energy",   basePrice: 2820, drift: 12, vol: 1.5 },
+  { symbol: "TCS",        name: "Tata Consultancy",        sector: "IT",       basePrice: 3910, drift: 10, vol: 1.3 },
+  { symbol: "INFY",       name: "Infosys",                 sector: "IT",       basePrice: 1520, drift:  9, vol: 1.6 },
+  { symbol: "HDFCBANK",   name: "HDFC Bank",               sector: "Banking",  basePrice: 1640, drift:  8, vol: 1.4 },
+  { symbol: "ICICIBANK",  name: "ICICI Bank",              sector: "Banking",  basePrice: 1180, drift: 11, vol: 1.5 },
+  { symbol: "SBIN",       name: "State Bank of India",     sector: "Banking",  basePrice:  820, drift:  7, vol: 1.7 },
+  { symbol: "ITC",        name: "ITC",                     sector: "FMCG",     basePrice:  460, drift:  6, vol: 1.1 },
+  { symbol: "HINDUNILVR", name: "Hindustan Unilever",      sector: "FMCG",     basePrice: 2420, drift:  5, vol: 1.0 },
+  { symbol: "NESTLEIND",  name: "Nestle India",            sector: "FMCG",     basePrice: 2490, drift:  6, vol: 1.1 },
+  { symbol: "MARUTI",     name: "Maruti Suzuki",           sector: "Auto",     basePrice:12860, drift:  9, vol: 1.6 },
+  { symbol: "TATAMOTORS", name: "Tata Motors",             sector: "Auto",     basePrice:  990, drift: 14, vol: 2.0 },
+  { symbol: "M&M",        name: "Mahindra & Mahindra",     sector: "Auto",     basePrice: 2610, drift: 11, vol: 1.7 },
+  { symbol: "SUNPHARMA",  name: "Sun Pharmaceutical",      sector: "Pharma",   basePrice: 1760, drift:  8, vol: 1.4 },
+  { symbol: "CIPLA",      name: "Cipla",                   sector: "Pharma",   basePrice: 1490, drift:  7, vol: 1.3 },
+  { symbol: "ONGC",       name: "ONGC",                    sector: "Energy",   basePrice:  270, drift:  5, vol: 1.8 },
+  { symbol: "NTPC",       name: "NTPC",                    sector: "Energy",   basePrice:  360, drift:  6, vol: 1.4 },
+  { symbol: "BHARTIARTL", name: "Bharti Airtel",           sector: "Telecom",  basePrice: 1380, drift: 13, vol: 1.5 },
+  { symbol: "TATASTEEL",  name: "Tata Steel",              sector: "Metals",   basePrice:  160, drift:  8, vol: 2.2 },
+  { symbol: "HINDALCO",   name: "Hindalco",                sector: "Metals",   basePrice:  640, drift:  9, vol: 2.1 },
+  { symbol: "LT",         name: "Larsen & Toubro",         sector: "Infra",    basePrice: 3580, drift: 12, vol: 1.5 },
+  { symbol: "ADANIPORTS", name: "Adani Ports",             sector: "Infra",    basePrice: 1340, drift: 14, vol: 2.0 },
+  { symbol: "ASIANPAINT", name: "Asian Paints",            sector: "Consumer", basePrice: 2790, drift:  5, vol: 1.3 },
+  { symbol: "TITAN",      name: "Titan Company",           sector: "Consumer", basePrice: 3410, drift: 11, vol: 1.6 },
+  { symbol: "BAJFINANCE", name: "Bajaj Finance",           sector: "Banking",  basePrice: 7180, drift:  9, vol: 1.8 },
+  { symbol: "AXISBANK",   name: "Axis Bank",               sector: "Banking",  basePrice: 1090, drift:  8, vol: 1.6 },
+];
+
+export const SECTORS: Sector[] = Array.from(
+  new Set(STOCKS.map((s) => s.sector)),
+) as Sector[];
+
+export function getStock(symbol: string): Stock | null {
+  return STOCKS.find((s) => s.symbol === symbol) ?? null;
+}
+
+function hash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = (h * 16777619) >>> 0;
+  }
+  return h;
+}
+
+// Seeded Gaussian-ish noise in [-1, 1] range from (symbol, dayIdx).
+function noise(symbol: string, dayIdx: number): number {
+  let h = hash(`${symbol}|${dayIdx}`);
+  // Mix twice and average for a smoother distribution.
+  const a = ((h % 10000) / 10000) * 2 - 1;
+  h = (h * 1103515245 + 12345) >>> 0;
+  const b = ((h % 10000) / 10000) * 2 - 1;
+  return (a + b) / 2;
+}
+
+const ANCHOR = new Date("2025-01-01T00:00:00Z").getTime();
+
+export function dayIndex(date: Date): number {
+  return Math.floor((date.getTime() - ANCHOR) / (24 * 60 * 60 * 1000));
+}
+
+/**
+ * Deterministic EOD close for (symbol, date). Uses a geometric-ish walk
+ * built from the anchor and the stock's drift + vol. The same (symbol,
+ * date) pair always yields the same price on every device.
+ */
+export function price(symbol: string, date: Date): number {
+  const s = getStock(symbol);
+  if (!s) return 0;
+  const d = Math.max(0, dayIndex(date));
+
+  // Compounding drift.
+  const dailyDrift = s.drift / 100 / 252;
+  const trendFactor = Math.exp(dailyDrift * d);
+
+  // Cumulative seeded "wiggle" so prices don't just monotonically drift.
+  let wiggle = 0;
+  // Walk using a coarser window so consecutive days look correlated.
+  for (let k = 0; k < d; k++) {
+    wiggle += noise(symbol, k) * (s.vol / 100);
+  }
+  // Dampen wiggle so prices don't explode over a long horizon.
+  const dampened = wiggle / Math.max(1, Math.sqrt(d + 1) * 0.35);
+
+  const multiplier = trendFactor * Math.exp(dampened);
+  return +(s.basePrice * multiplier).toFixed(2);
+}
+
+/** Simple percent return from -> to (both dates). */
+export function pctReturn(
+  symbol: string,
+  from: Date,
+  to: Date,
+): number {
+  const p0 = price(symbol, from);
+  const p1 = price(symbol, to);
+  if (p0 <= 0) return 0;
+  return +(((p1 - p0) / p0) * 100).toFixed(2);
+}
+
+/** Synthetic NIFTY 50 proxy: equal-weight of our full universe. */
+export function niftyReturn(from: Date, to: Date): number {
+  const sum = STOCKS.reduce((s, st) => s + pctReturn(st.symbol, from, to), 0);
+  return +(sum / STOCKS.length).toFixed(2);
+}
+
+export function niftyPrice(date: Date): number {
+  // Index level normalised to 22000 at anchor.
+  const sum = STOCKS.reduce((s, st) => s + price(st.symbol, date), 0);
+  const anchorSum = STOCKS.reduce((s, st) => s + st.basePrice, 0);
+  return +((sum / anchorSum) * 22000).toFixed(2);
+}
