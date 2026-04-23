@@ -7,12 +7,16 @@ import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import {
+  CAPITAL_PRESETS,
   StrategyPortfolio,
+  UniverseFilter,
+  allowedUniverse,
   createPortfolio,
   listPortfolios,
   snapshot,
   totalAllocated,
 } from "@/lib/portfolios";
+import { ASSET_CLASSES, AssetClass, SECTORS, Sector } from "@/lib/stocks";
 import { useSession } from "@/lib/session";
 
 export default function PortfoliosPage() {
@@ -34,6 +38,14 @@ function PortfoliosInner() {
   const [portfolios, setPortfolios] = useState<StrategyPortfolio[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [capital, setCapital] = useState<number>(100_000);
+  const [assetClasses, setAssetClasses] = useState<AssetClass[]>([
+    "stock",
+    "etf",
+    "index",
+  ]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [nifty50Only, setNifty50Only] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,6 +54,24 @@ function PortfoliosInner() {
 
   if (!user) return null;
 
+  const filter: UniverseFilter = {
+    assetClasses: assetClasses.length === 3 ? undefined : assetClasses,
+    sectors: sectors.length === 0 ? undefined : sectors,
+    nifty50Only: nifty50Only || undefined,
+  };
+  const allowedCount = allowedUniverse(filter).length;
+
+  function toggleAC(a: AssetClass) {
+    setAssetClasses((prev) =>
+      prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a],
+    );
+  }
+  function toggleSector(s: Sector) {
+    setSectors((prev) =>
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s],
+    );
+  }
+
   function onCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
@@ -49,6 +79,8 @@ function PortfoliosInner() {
     const r = createPortfolio(user.email, {
       name,
       description: description || undefined,
+      initialCapital: capital,
+      universe: filter,
     });
     if (!r.ok) {
       setError(r.error);
@@ -81,40 +113,132 @@ function PortfoliosInner() {
 
       <section className="mb-10 rounded-2xl border border-brand-500/40 bg-brand-500/5 p-6">
         <h2 className="text-lg font-semibold">Create a strategy portfolio</h2>
-        <form onSubmit={onCreate} className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]">
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-ink-300">Name</span>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="My balanced basket"
-              className="input"
-              required
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-ink-300">Thesis (optional)</span>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Quality compounders + one cyclical bet"
-              className="input"
-            />
-          </label>
-          <div className="flex items-end">
+        <form onSubmit={onCreate} className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-ink-300">Name</span>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="My balanced basket"
+                className="input"
+                required
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-ink-300">Thesis (optional)</span>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Quality compounders + one cyclical bet"
+                className="input"
+              />
+            </label>
+          </div>
+
+          <div className="rounded-lg border border-ink-700 bg-ink-950 p-4">
+            <h3 className="text-xs font-medium uppercase tracking-wider text-ink-400">
+              Virtual capital
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {CAPITAL_PRESETS.map((c) => (
+                <button
+                  key={c.amount}
+                  type="button"
+                  onClick={() => setCapital(c.amount)}
+                  className={
+                    "rounded-md border px-3 py-1.5 text-xs transition " +
+                    (capital === c.amount
+                      ? "border-brand-500 bg-brand-500/10 text-brand-200"
+                      : "border-ink-700 text-ink-300 hover:border-ink-500")
+                  }
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-ink-700 bg-ink-950 p-4">
+            <h3 className="text-xs font-medium uppercase tracking-wider text-ink-400">
+              Asset class
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {ASSET_CLASSES.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => toggleAC(a)}
+                  className={
+                    "rounded-md border px-3 py-1.5 text-xs transition capitalize " +
+                    (assetClasses.includes(a)
+                      ? "border-brand-500 bg-brand-500/10 text-brand-200"
+                      : "border-ink-700 text-ink-400 hover:border-ink-500")
+                  }
+                >
+                  {a === "etf" ? "ETFs" : a === "index" ? "Indices" : "Stocks"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-ink-700 bg-ink-950 p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-ink-400">
+                Industry filter
+              </h3>
+              <label className="flex items-center gap-2 text-xs text-ink-300">
+                <input
+                  type="checkbox"
+                  checked={nifty50Only}
+                  onChange={(e) => setNifty50Only(e.target.checked)}
+                  className="h-4 w-4 accent-emerald-500"
+                />
+                Nifty 50 only
+              </label>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {SECTORS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleSector(s)}
+                  className={
+                    "rounded-md border px-2.5 py-1 text-xs transition " +
+                    (sectors.includes(s)
+                      ? "border-brand-500 bg-brand-500/10 text-brand-200"
+                      : "border-ink-700 text-ink-400 hover:border-ink-500")
+                  }
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[10px] text-ink-500">
+              {sectors.length === 0
+                ? "No filter — every sector allowed."
+                : `${sectors.length} sector${sectors.length === 1 ? "" : "s"} selected.`}
+              {" · "}
+              {allowedCount} symbol{allowedCount === 1 ? "" : "s"} in current universe
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-ink-500">
+              ₹{capital.toLocaleString("en-IN")} paper capital · {allowedCount}{" "}
+              symbols available
+            </span>
             <button
               type="submit"
-              className="w-full rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-ink-950 hover:bg-brand-300 md:w-auto"
+              className="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-ink-950 hover:bg-brand-300"
             >
-              Create
+              Create portfolio
             </button>
           </div>
         </form>
-        {error && (
-          <p className="mt-3 text-sm text-red-300">{error}</p>
-        )}
+        {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
       </section>
 
       <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-ink-400">

@@ -17,6 +17,8 @@ export type Sector =
   | "Infra"
   | "Consumer";
 
+export type AssetClass = "stock" | "etf" | "index";
+
 export type Stock = {
   symbol: string;
   name: string;
@@ -26,6 +28,9 @@ export type Stock = {
   drift: number;
   // Volatility target (daily, in %).
   vol: number;
+  assetClass?: AssetClass; // default "stock"
+  /** Symbols inside our universe that live in the Nifty 50 proxy. */
+  nifty50?: boolean;
 };
 
 export const STOCKS: Stock[] = [
@@ -54,7 +59,30 @@ export const STOCKS: Stock[] = [
   { symbol: "TITAN",      name: "Titan Company",           sector: "Consumer", basePrice: 3410, drift: 11, vol: 1.6 },
   { symbol: "BAJFINANCE", name: "Bajaj Finance",           sector: "Banking",  basePrice: 7180, drift:  9, vol: 1.8 },
   { symbol: "AXISBANK",   name: "Axis Bank",               sector: "Banking",  basePrice: 1090, drift:  8, vol: 1.6 },
+  // --- ETFs (sector / index trackers) ---
+  { symbol: "NIFTYBEES",    name: "Nippon India ETF Nifty 50",        sector: "Infra",    basePrice:  245, drift:  9, vol: 1.0, assetClass: "etf"   },
+  { symbol: "BANKBEES",     name: "Nippon India ETF Bank Nifty",      sector: "Banking",  basePrice:  480, drift:  9, vol: 1.2, assetClass: "etf"   },
+  { symbol: "GOLDBEES",     name: "Nippon India ETF Gold BeES",       sector: "Consumer", basePrice:   62, drift:  8, vol: 0.8, assetClass: "etf"   },
+  { symbol: "JUNIORBEES",   name: "Nippon India ETF Nifty Next 50",   sector: "Infra",    basePrice:  640, drift: 11, vol: 1.2, assetClass: "etf"   },
+  { symbol: "ITBEES",       name: "Nippon India ETF Nifty IT",        sector: "IT",       basePrice:   42, drift: 10, vol: 1.4, assetClass: "etf"   },
+  // --- Indices (index products for Nifty & sectoral) ---
+  { symbol: "NIFTY50",      name: "Nifty 50 index",                    sector: "Infra",    basePrice:22000, drift:  9, vol: 1.0, assetClass: "index" },
+  { symbol: "BANKNIFTY",    name: "Nifty Bank index",                  sector: "Banking",  basePrice:48000, drift:  9, vol: 1.3, assetClass: "index" },
+  { symbol: "NIFTYIT",      name: "Nifty IT index",                    sector: "IT",       basePrice:36000, drift: 10, vol: 1.5, assetClass: "index" },
+  { symbol: "NIFTYAUTO",    name: "Nifty Auto index",                  sector: "Auto",     basePrice:23500, drift: 11, vol: 1.6, assetClass: "index" },
+  { symbol: "NIFTYPHARMA",  name: "Nifty Pharma index",                sector: "Pharma",   basePrice:17800, drift:  8, vol: 1.3, assetClass: "index" },
 ];
+
+// Mark the first 25 stock-typed entries as Nifty 50 members (large caps).
+for (const s of STOCKS) {
+  if ((s.assetClass ?? "stock") === "stock") s.nifty50 = true;
+}
+
+export const ASSET_CLASSES: AssetClass[] = ["stock", "etf", "index"];
+
+export function assetClassOf(s: Stock): AssetClass {
+  return s.assetClass ?? "stock";
+}
 
 export const SECTORS: Sector[] = Array.from(
   new Set(STOCKS.map((s) => s.sector)),
@@ -129,14 +157,17 @@ export function pctReturn(
 }
 
 /** Synthetic NIFTY 50 proxy: equal-weight of our full universe. */
+/** Stocks only — used to anchor the Nifty proxy below. */
+const STOCK_ONLY = STOCKS.filter((s) => (s.assetClass ?? "stock") === "stock");
+
 export function niftyReturn(from: Date, to: Date): number {
-  const sum = STOCKS.reduce((s, st) => s + pctReturn(st.symbol, from, to), 0);
-  return +(sum / STOCKS.length).toFixed(2);
+  const sum = STOCK_ONLY.reduce((s, st) => s + pctReturn(st.symbol, from, to), 0);
+  return +(sum / STOCK_ONLY.length).toFixed(2);
 }
 
 export function niftyPrice(date: Date): number {
   // Index level normalised to 22000 at anchor.
-  const sum = STOCKS.reduce((s, st) => s + price(st.symbol, date), 0);
-  const anchorSum = STOCKS.reduce((s, st) => s + st.basePrice, 0);
+  const sum = STOCK_ONLY.reduce((s, st) => s + price(st.symbol, date), 0);
+  const anchorSum = STOCK_ONLY.reduce((s, st) => s + st.basePrice, 0);
   return +((sum / anchorSum) * 22000).toFixed(2);
 }

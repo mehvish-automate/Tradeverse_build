@@ -78,7 +78,9 @@ export function submitAllocation(
 
 /** Equal-weight sector return between two dates using our mock stocks. */
 export function sectorReturn(sector: Sector, from: Date, to: Date): number {
-  const names = STOCKS.filter((s) => s.sector === sector);
+  const names = STOCKS.filter(
+    (s) => s.sector === sector && (s.assetClass ?? "stock") === "stock",
+  );
   if (names.length === 0) return 0;
   const sum = names.reduce((acc, s) => {
     const p0 = price(s.symbol, from);

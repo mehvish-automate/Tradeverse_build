@@ -1,8 +1,19 @@
 "use client";
 
-import { STOCKS, niftyPrice, niftyReturn, price } from "./stocks";
+import { AssetClass, Sector, STOCKS, Stock, niftyPrice, niftyReturn, price } from "./stocks";
 
 export type Holding = { symbol: string; pct: number };
+
+export type UniverseFilter = {
+  /** If set, only stocks with these sectors are allowed. */
+  sectors?: Sector[];
+  /** If set, only stocks with these asset classes are allowed. */
+  assetClasses?: AssetClass[];
+  /** If set, only Nifty-50 members (flag on Stock) are allowed. */
+  nifty50Only?: boolean;
+  /** If set, explicit symbol allow-list (overrides the others). */
+  symbols?: string[];
+};
 
 export type StrategyPortfolio = {
   id: string;
@@ -12,7 +23,36 @@ export type StrategyPortfolio = {
   baseDate: string; // ISO yyyy-mm-dd — the "invested on" date
   initialCapital: number; // ₹, default 100,000
   holdings: Holding[];
+  /** Optional filter on the investable universe. Omit = all symbols ok. */
+  universe?: UniverseFilter;
 };
+
+/** Preset capital tiers surfaced in the create form. */
+export const CAPITAL_PRESETS: { amount: number; label: string }[] = [
+  { amount: 100_000,   label: "₹1 L"  },
+  { amount: 500_000,   label: "₹5 L"  },
+  { amount: 1_000_000, label: "₹10 L" },
+  { amount: 5_000_000, label: "₹50 L" },
+];
+
+export function allowedUniverse(filter?: UniverseFilter): Stock[] {
+  if (!filter) return STOCKS;
+  if (filter.symbols && filter.symbols.length > 0) {
+    const set = new Set(filter.symbols);
+    return STOCKS.filter((s) => set.has(s.symbol));
+  }
+  return STOCKS.filter((s) => {
+    const ac = s.assetClass ?? "stock";
+    if (filter.assetClasses && filter.assetClasses.length > 0) {
+      if (!filter.assetClasses.includes(ac)) return false;
+    }
+    if (filter.sectors && filter.sectors.length > 0) {
+      if (!filter.sectors.includes(s.sector)) return false;
+    }
+    if (filter.nifty50Only && !s.nifty50) return false;
+    return true;
+  });
+}
 
 const KEY = (email: string) => `tv.portfolios.${email}`;
 
@@ -53,11 +93,22 @@ export function createPortfolio(
     description?: string;
     baseDate?: string;
     initialCapital?: number;
+    universe?: UniverseFilter;
   },
 ): { ok: true; portfolio: StrategyPortfolio } | { ok: false; error: string } {
   const name = input.name.trim();
   if (name.length < 3) return { ok: false, error: "Name too short (min 3)." };
   if (name.length > 40) return { ok: false, error: "Name too long (max 40)." };
+
+  if (input.initialCapital != null && input.initialCapital < 10_000) {
+    return { ok: false, error: "Capital must be ≥ ₹10,000." };
+  }
+
+  // Make sure the filter actually allows at least one symbol.
+  const allowed = allowedUniverse(input.universe);
+  if (allowed.length === 0) {
+    return { ok: false, error: "Your universe filter excludes every symbol." };
+  }
 
   const portfolio: StrategyPortfolio = {
     id: genId(),
@@ -67,6 +118,7 @@ export function createPortfolio(
     baseDate: input.baseDate || new Date().toISOString().slice(0, 10),
     initialCapital: input.initialCapital ?? 100000,
     holdings: [],
+    universe: input.universe,
   };
 
   const all = read(email);
@@ -89,9 +141,18 @@ export function updatePortfolio(
     if (total > 100.01) {
       return { ok: false, error: `Allocations total ${total.toFixed(1)}% — keep it ≤ 100%.` };
     }
+    const allowed = new Set(
+      allowedUniverse(all[idx].universe).map((s) => s.symbol),
+    );
     for (const h of patch.holdings) {
       if (!STOCKS.find((s) => s.symbol === h.symbol)) {
         return { ok: false, error: `Unknown symbol: ${h.symbol}` };
+      }
+      if (!allowed.has(h.symbol)) {
+        return {
+          ok: false,
+          error: `${h.symbol} is outside this portfolio's universe filter.`,
+        };
       }
       if (h.pct < 0 || h.pct > 100) {
         return { ok: false, error: `Allocation out of range for ${h.symbol}.` };

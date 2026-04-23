@@ -9,6 +9,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import {
   Holding,
   StrategyPortfolio,
+  allowedUniverse,
   deletePortfolio,
   getPortfolio,
   snapshot,
@@ -95,6 +96,29 @@ function PortfolioInner() {
             Based {portfolio.baseDate} · ₹
             {portfolio.initialCapital.toLocaleString("en-IN")} paper capital
           </div>
+          {portfolio.universe &&
+            (portfolio.universe.sectors?.length ||
+              portfolio.universe.assetClasses?.length ||
+              portfolio.universe.nifty50Only) && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] uppercase tracking-wider text-ink-400">
+                <span className="text-ink-500">Universe:</span>
+                {portfolio.universe.nifty50Only && (
+                  <span className="rounded-md bg-ink-900 px-1.5 py-0.5">
+                    Nifty 50
+                  </span>
+                )}
+                {portfolio.universe.assetClasses?.map((a) => (
+                  <span key={a} className="rounded-md bg-ink-900 px-1.5 py-0.5">
+                    {a === "etf" ? "ETFs" : a === "index" ? "Indices" : "Stocks"}
+                  </span>
+                ))}
+                {portfolio.universe.sectors?.map((s) => (
+                  <span key={s} className="rounded-md bg-ink-900 px-1.5 py-0.5">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            )}
         </div>
         <button
           onClick={() => {
@@ -284,11 +308,14 @@ function HoldingsEditor({
   error: string | null;
   allocated: number;
 }) {
-  const [symbol, setSymbol] = useState<string>(STOCKS[0].symbol);
+  const allowed = allowedUniverse(portfolio.universe);
+  const [symbol, setSymbol] = useState<string>(
+    allowed[0]?.symbol ?? STOCKS[0].symbol,
+  );
   const [pct, setPct] = useState<number>(10);
 
   const existingSymbols = new Set(portfolio.holdings.map((h) => h.symbol));
-  const available = STOCKS.filter((s) => !existingSymbols.has(s.symbol));
+  const available = allowed.filter((s) => !existingSymbols.has(s.symbol));
 
   function add(e: React.FormEvent) {
     e.preventDefault();
