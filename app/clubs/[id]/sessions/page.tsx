@@ -398,6 +398,14 @@ function SessionCard({
               Open link →
             </a>
           )}
+          {status !== "ended" && (
+            <Link
+              href={`/live/${session.id}`}
+              className="rounded-md border border-brand-500/60 bg-brand-500/10 px-3 py-1.5 text-xs font-semibold text-brand-200 hover:bg-brand-500/20"
+            >
+              Join live room →
+            </Link>
+          )}
           {isHost && status !== "ended" && (
             <button
               onClick={() => {
