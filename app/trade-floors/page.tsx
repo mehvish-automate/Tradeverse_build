@@ -13,6 +13,7 @@ import {
   joinTradeFloor,
 } from "@/lib/tradeFloors";
 import { useSession } from "@/lib/session";
+import { joinTradeFloorCloud, writeTradeFloor } from "@/lib/supabase/writes";
 
 export default function TradeFloorsPage() {
   return (
@@ -110,6 +111,7 @@ function CreateTradeFloorCard({ onCreated }: { onCreated: (l: TradeFloor) => voi
       setError(r.error);
       return;
     }
+    void writeTradeFloor({ id: r.tradeFloor.id, name: r.tradeFloor.name });
     onCreated(r.tradeFloor);
   }
 
@@ -162,6 +164,7 @@ function JoinTradeFloorCard({ onJoined }: { onJoined: (l: TradeFloor) => void })
       setError(r.error);
       return;
     }
+    void joinTradeFloorCloud(r.tradeFloor.id);
     onJoined(r.tradeFloor);
   }
 

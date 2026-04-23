@@ -22,6 +22,7 @@ import {
 } from "@/lib/floor";
 import { useSession } from "@/lib/session";
 import { useRealtimeFloor } from "@/lib/supabase/realtime";
+import { writeFloorPost } from "@/lib/supabase/writes";
 
 export default function FloorPage() {
   return (
@@ -144,6 +145,12 @@ function Composer({ clubId, onPosted }: { clubId: string; onPosted: () => void }
       setError(r.error);
       return;
     }
+    void writeFloorPost({
+      clubId,
+      body: r.post.body,
+      kind: r.post.kind,
+      ticker: r.post.meta?.ticker,
+    });
     setBody("");
     setTicker("");
     setKind("text");

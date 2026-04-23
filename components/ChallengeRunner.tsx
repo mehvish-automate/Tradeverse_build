@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { QuestionView } from "@/components/QuestionView";
 import { DailyResult, recordResult, scoreAnswer, todayResult } from "@/lib/progress";
+import { writeDailyResult, writeUserStats } from "@/lib/supabase/writes";
 import { dailyQuestions, todayKey } from "@/lib/questions";
 import {
   RivalEvent,
@@ -107,6 +108,10 @@ export function ChallengeRunner({ user }: { user: User }) {
         timeMs: totalMs,
       };
       const store = recordResult(user.email, result);
+
+      // Mirror write to the cloud when signed in. No-op without env.
+      void writeDailyResult(result);
+      void writeUserStats(store.streak, store.lastPlayedKey, store.totalXp);
 
       // Every 5th streak day awards a freeze token + a celebratory log.
       if (store.streak > 0 && store.streak % 5 === 0) {
