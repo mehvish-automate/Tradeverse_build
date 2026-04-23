@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { Nav } from "@/components/Nav";
+import { authMode, signUpUniversal } from "@/lib/auth";
 import { applyReferral, handleForCode, registerOwnCode } from "@/lib/referral";
-import { signUp } from "@/lib/session";
 
 export default function SignupPage() {
   return (
@@ -32,11 +32,13 @@ function SignupForm() {
   const [dob, setDob] = useState("");
   const [agree, setAgree] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setMessage(null);
 
     if (!agree) {
       setError("Please confirm you're 18+ and understand this is a skill game.");
@@ -44,7 +46,7 @@ function SignupForm() {
     }
 
     setLoading(true);
-    const result = signUp({ email, displayName, dob });
+    const result = await signUpUniversal({ email, displayName, dob });
     setLoading(false);
 
     if (!result.ok) {
@@ -52,9 +54,16 @@ function SignupForm() {
       return;
     }
 
-    registerOwnCode(result.user.email, result.user.displayName);
-    if (ref) applyReferral(result.user.email, ref);
+    // Mirror: local identity is always available so the UI has a User.
+    registerOwnCode(email.trim().toLowerCase(), displayName);
+    if (ref) applyReferral(email.trim().toLowerCase(), ref);
 
+    if (result.mode === "supabase") {
+      setMessage(
+        result.message ?? "Check your email for the magic link.",
+      );
+      return;
+    }
     router.push("/welcome");
   }
 
@@ -133,13 +142,22 @@ function SignupForm() {
               {error}
             </p>
           )}
+          {message && (
+            <p className="rounded-md border border-brand-500/40 bg-brand-500/5 px-3 py-2 text-sm text-brand-200">
+              {message}
+            </p>
+          )}
 
           <button
             type="submit"
             disabled={loading}
             className="w-full rounded-lg bg-brand-500 px-5 py-3 text-sm font-medium text-ink-950 hover:bg-brand-300 disabled:opacity-60"
           >
-            {loading ? "Creating…" : "Create account"}
+            {loading
+              ? "Working…"
+              : authMode() === "supabase"
+                ? "Send magic link"
+                : "Create account"}
           </button>
 
           <p className="text-center text-sm text-ink-400">
