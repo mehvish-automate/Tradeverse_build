@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TradeVerse">
+  <rect width="512" height="512" fill="#020617"/>
+  <g transform="translate(64 64) scale(0.75)">
+    <path d="M 80 370 L 170 310 L 230 340 L 300 240 L 370 270 L 432 150" fill="none" stroke="#10b981" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="432" cy="150" r="26" fill="#10b981"/>
+    <circle cx="432" cy="150" r="12" fill="#020617"/>
+  </g>
+</svg>

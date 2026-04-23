@@ -1,5 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+
+import { InstallBanner } from "@/components/InstallBanner";
 
 export const metadata: Metadata = {
   title: {
@@ -9,6 +11,8 @@ export const metadata: Metadata = {
   description:
     "TradeVerse is a pure skill-game for Indian markets. Daily chart challenges and trade floors. No trading, no real money, no KYC.",
   metadataBase: new URL("https://tradeverse.app"),
+  manifest: "/manifest.webmanifest",
+  applicationName: "TradeVerse",
   keywords: [
     "TradeVerse",
     "stock market game India",
@@ -31,6 +35,23 @@ export const metadata: Metadata = {
       "A daily 5-minute skill game on live NSE/BSE data. No trading, no real money.",
   },
   robots: { index: true, follow: true },
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/icon.svg" }],
+    shortcut: "/icon.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "TradeVerse",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#020617",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -40,7 +61,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen antialiased">
+        {children}
+        <InstallBanner />
+      </body>
     </html>
   );
 }
