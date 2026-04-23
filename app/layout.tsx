@@ -3,6 +3,7 @@ import "./globals.css";
 
 import { InstallBanner } from "@/components/InstallBanner";
 import { PushRuntime } from "@/components/PushRuntime";
+import { SyncRuntime } from "@/components/SyncRuntime";
 
 export const metadata: Metadata = {
   title: {
@@ -66,6 +67,7 @@ export default function RootLayout({
         {children}
         <InstallBanner />
         <PushRuntime />
+        <SyncRuntime />
       </body>
     </html>
   );

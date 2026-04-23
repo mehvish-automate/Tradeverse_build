@@ -1,0 +1,199 @@
+"use client";
+
+// Phase 27.3 — mirror the localStorage progress store into Supabase
+// whenever the user has a live Supabase session. Additive: reads still
+// come from localStorage; this just pushes state up so it survives
+// across devices and becomes the source of truth for future phases.
+
+import { getBrowserSupabase } from "./client";
+import { getProgress } from "../progress";
+import { getCurrentUser } from "../session";
+import { getHomeInstitute } from "../onboarding";
+
+const LAST_SYNC_KEY = (email: string) => `tv.sync.lastResult.${email}`;
+
+/**
+ * Upsert the local profile summary into profiles + user_stats. Runs
+ * on first sign-in and on any subsequent change. Safe to call often.
+ */
+export async function syncProfile(): Promise<boolean> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return false;
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return false;
+
+  const local = getCurrentUser();
+  if (!local) return false;
+
+  const longest = computeLongestStreak(local.email);
+  const p = getProgress(local.email);
+
+  const profileRow = {
+    id: auth.user.id,
+    email: auth.user.email ?? local.email,
+    display_name: local.displayName,
+    dob: local.dob,
+    home_institute: getHomeInstitute(local.email),
+    onboarded: true,
+  };
+  const { error: profErr } = await (supabase.from("profiles") as unknown as {
+    upsert: (row: unknown) => Promise<{ error: { message: string } | null }>;
+  }).upsert(profileRow);
+  if (profErr) return false;
+
+  const statsRow = {
+    user_id: auth.user.id,
+    streak: p.streak,
+    last_played_key: p.lastPlayedKey,
+    total_xp: p.totalXp,
+    longest_streak: Math.max(longest, p.streak),
+    streak_freezes: readFreezeCount(local.email),
+  };
+  const { error: statsErr } = await (supabase.from("user_stats") as unknown as {
+    upsert: (row: unknown) => Promise<{ error: { message: string } | null }>;
+  }).upsert(statsRow);
+  if (statsErr) return false;
+
+  return true;
+}
+
+/**
+ * Insert any daily_results rows that haven't been uploaded yet. We
+ * watermark by `placedAt` to avoid duplicate inserts; Supabase enforces
+ * unique(user_id, date_key) at the DB level as a belt-and-braces.
+ */
+export async function syncDailyResults(): Promise<number> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return 0;
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return 0;
+
+  const local = getCurrentUser();
+  if (!local) return 0;
+
+  const last = Number(localStorage.getItem(LAST_SYNC_KEY(local.email)) || "0");
+  const p = getProgress(local.email);
+  const toSync = p.history.filter(
+    (r) => new Date(r.dateKey).getTime() > last,
+  );
+  if (toSync.length === 0) return 0;
+
+  const rows = toSync.map((r) => ({
+    user_id: auth.user!.id,
+    date_key: r.dateKey,
+    correct: r.correct,
+    total: r.total,
+    xp: r.xp,
+    time_ms: r.timeMs,
+  }));
+
+  const { error } = await (supabase.from("daily_results") as unknown as {
+    upsert: (
+      rows: unknown[],
+      opts: { onConflict: string },
+    ) => Promise<{ error: { message: string } | null }>;
+  }).upsert(rows, { onConflict: "user_id,date_key" });
+  if (error) return 0;
+
+  const newest = toSync.reduce(
+    (m, r) => Math.max(m, new Date(r.dateKey).getTime()),
+    last,
+  );
+  localStorage.setItem(LAST_SYNC_KEY(local.email), String(newest));
+  return rows.length;
+}
+
+/**
+ * Bring server-side daily_results down into localStorage on first load
+ * (so a user who plays on phone still sees those runs on desktop).
+ * Merges by date_key; local wins ties to avoid clobbering a fresh
+ * in-memory run that hasn't been uploaded yet.
+ */
+export async function pullDailyResults(): Promise<number> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return 0;
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return 0;
+
+  const local = getCurrentUser();
+  if (!local) return 0;
+
+  type SelectedRow = {
+    date_key: string;
+    correct: number;
+    total: number;
+    xp: number;
+    time_ms: number;
+  };
+  const res = await (supabase.from("daily_results") as unknown as {
+    select: (cols: string) => {
+      eq: (
+        col: string,
+        val: string,
+      ) => Promise<{ data: SelectedRow[] | null; error: { message: string } | null }>;
+    };
+  })
+    .select("date_key, correct, total, xp, time_ms")
+    .eq("user_id", auth.user.id);
+  if (res.error || !res.data) return 0;
+  const data = res.data;
+
+  const PROGRESS_KEY = `tv.progress.${local.email}`;
+  const raw = localStorage.getItem(PROGRESS_KEY);
+  const store = raw
+    ? (JSON.parse(raw) as {
+        streak: number;
+        lastPlayedKey: string | null;
+        totalXp: number;
+        history: { dateKey: string; correct: number; total: number; xp: number; timeMs: number }[];
+      })
+    : { streak: 0, lastPlayedKey: null, totalXp: 0, history: [] };
+
+  let added = 0;
+  for (const row of data) {
+    if (!store.history.some((h) => h.dateKey === row.date_key)) {
+      store.history.push({
+        dateKey: row.date_key,
+        correct: row.correct,
+        total: row.total,
+        xp: row.xp,
+        timeMs: row.time_ms,
+      });
+      added++;
+    }
+  }
+  if (added > 0) {
+    store.totalXp = store.history.reduce((s, h) => s + h.xp, 0);
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(store));
+  }
+  return added;
+}
+
+// --- Helpers ---
+
+function readFreezeCount(email: string): number {
+  const v = localStorage.getItem(`tv.streakfreezes.${email}`);
+  return v ? Number(v) || 0 : 0;
+}
+
+function computeLongestStreak(email: string): number {
+  const p = getProgress(email);
+  const sorted = [...p.history].sort((a, b) =>
+    a.dateKey < b.dateKey ? -1 : 1,
+  );
+  let longest = 0;
+  let run = 0;
+  let prev: string | null = null;
+  for (const h of sorted) {
+    if (prev) {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + 1);
+      run = d.toISOString().slice(0, 10) === h.dateKey ? run + 1 : 1;
+    } else {
+      run = 1;
+    }
+    longest = Math.max(longest, run);
+    prev = h.dateKey;
+  }
+  return longest;
+}

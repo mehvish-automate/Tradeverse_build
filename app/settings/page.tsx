@@ -8,6 +8,12 @@ import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import { getInstitute, INSTITUTES } from "@/lib/clubs";
 import { getHomeInstitute, setHomeInstitute } from "@/lib/onboarding";
+import { supabaseConfigured, getBrowserSupabase } from "@/lib/supabase/client";
+import {
+  pullDailyResults,
+  syncDailyResults,
+  syncProfile,
+} from "@/lib/supabase/sync";
 import {
   Prefs,
   deleteUserData,
@@ -213,6 +219,8 @@ function SettingsInner() {
           )}
         </Row>
       </Section>
+
+      <CloudSection />
 
       <Section title="Push & reminders">
         {notificationSupported() ? (
@@ -420,5 +428,83 @@ function Toggle({
         />
       </button>
     </div>
+  );
+}
+
+function CloudSection() {
+  const [state, setState] = useState<
+    "missing" | "signed-out" | "signed-in"
+  >("missing");
+  const [email, setEmail] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!supabaseConfigured()) {
+      setState("missing");
+      return;
+    }
+    const supabase = getBrowserSupabase();
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => {
+      if (cancelled) return;
+      if (!data.user) setState("signed-out");
+      else {
+        setState("signed-in");
+        setEmail(data.user.email ?? null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function syncNow() {
+    setBusy(true);
+    setMsg(null);
+    await syncProfile();
+    const pulled = await pullDailyResults();
+    const pushed = await syncDailyResults();
+    setBusy(false);
+    setMsg(
+      `Synced — pulled ${pulled} result${pulled === 1 ? "" : "s"} from cloud, pushed ${pushed}.`,
+    );
+  }
+
+  return (
+    <Section title="Cloud sync">
+      {state === "missing" ? (
+        <p className="text-sm text-ink-400">
+          Supabase isn&apos;t configured on this device — the app is running
+          in local-only mode. See <code className="text-ink-200">BACKEND.md</code>{" "}
+          to wire it up.
+        </p>
+      ) : state === "signed-out" ? (
+        <p className="text-sm text-ink-400">
+          Backend configured. Sign in with the magic-link flow to sync
+          across devices.
+        </p>
+      ) : (
+        <>
+          <p className="text-sm text-ink-300">
+            Signed in as <span className="text-ink-100">{email}</span>. Your
+            progress syncs to the cloud every minute and on each play.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              onClick={syncNow}
+              disabled={busy}
+              className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-900 disabled:opacity-40"
+            >
+              {busy ? "Syncing…" : "Sync now"}
+            </button>
+          </div>
+          {msg && (
+            <p className="mt-2 text-xs text-brand-300">{msg}</p>
+          )}
+        </>
+      )}
+    </Section>
   );
 }
