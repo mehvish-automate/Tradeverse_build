@@ -211,10 +211,19 @@ function ClubInner() {
       </div>
 
       {isOwner && (
-        <p className="mt-6 text-xs text-ink-500">
-          You&apos;re the owner — use the Fests link above to create a
-          tournament. Members join via the fest invite code.
-        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-3">
+          <div className="text-xs text-ink-300">
+            <span className="font-medium text-amber-300">You&apos;re the owner.</span>{" "}
+            Admin dashboard shows member growth, floor activity, fest and
+            session stats.
+          </div>
+          <Link
+            href={`/clubs/${club.id}/admin`}
+            className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-ink-950 hover:bg-amber-400"
+          >
+            Open dashboard →
+          </Link>
+        </div>
       )}
 
       <div className="mt-6">
