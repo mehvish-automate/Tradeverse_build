@@ -189,16 +189,24 @@ function WatchlistCard({
           </div>
           <div className="text-xs text-ink-500">{row.stock.name}</div>
         </div>
-        <button
-          onClick={() => {
-            if (!user) return;
-            removeFromWatchlist(user.email, row.stock.symbol);
-            onRemove();
-          }}
-          className="rounded-md border border-ink-700 px-2.5 py-1 text-xs text-ink-300 hover:bg-ink-900"
-        >
-          Remove
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/chart/${row.stock.symbol}`}
+            className="rounded-md border border-ink-700 px-2.5 py-1 text-xs text-ink-200 hover:bg-ink-900"
+          >
+            Chart →
+          </Link>
+          <button
+            onClick={() => {
+              if (!user) return;
+              removeFromWatchlist(user.email, row.stock.symbol);
+              onRemove();
+            }}
+            className="rounded-md border border-ink-700 px-2.5 py-1 text-xs text-ink-300 hover:bg-ink-900"
+          >
+            Remove
+          </button>
+        </div>
       </div>
 
       <Sparkline series={row.series} />

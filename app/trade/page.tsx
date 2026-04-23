@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
+import { sessionAt, sessionLabel } from "@/lib/marketData";
 import { bookAtPrice, L2Book } from "@/lib/orderbook";
 import {
   Order,
@@ -86,12 +87,21 @@ function Inner() {
             is paper.
           </p>
         </div>
-        <Link
-          href="/trade/history"
-          className="rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-100 hover:bg-ink-900"
-        >
-          Order history →
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <SessionChip />
+          <Link
+            href={`/chart/${symbol}`}
+            className="rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-100 hover:bg-ink-900"
+          >
+            Open chart →
+          </Link>
+          <Link
+            href="/trade/history"
+            className="rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-100 hover:bg-ink-900"
+          >
+            Order history →
+          </Link>
+        </div>
       </div>
 
       <PortfolioRow pv={pv} cash={acct.cash} />
@@ -145,6 +155,31 @@ function Inner() {
         </Link>
       </div>
     </>
+  );
+}
+
+function SessionChip() {
+  const [s, setS] = useState(sessionAt());
+  useEffect(() => {
+    const iv = setInterval(() => setS(sessionAt()), 30_000);
+    return () => clearInterval(iv);
+  }, []);
+  const tone =
+    s === "open"
+      ? "bg-brand-500/15 text-brand-300"
+      : s === "pre" || s === "post"
+        ? "bg-amber-500/15 text-amber-300"
+        : "bg-ink-800 text-ink-400";
+  return (
+    <span
+      className={
+        "rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider " +
+        tone
+      }
+      title={sessionLabel(s)}
+    >
+      {s === "open" ? "Live" : s === "pre" ? "Pre-open" : s === "post" ? "Close block" : "Closed"}
+    </span>
   );
 }
 
