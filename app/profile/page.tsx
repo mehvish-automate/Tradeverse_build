@@ -323,37 +323,54 @@ function ProfileInner() {
         </Link>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Link
-          href="/clubs"
-          className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
-        >
-          <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
-            Institutes · Clubs
+      <section className="mt-10">
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <div className="text-xs font-medium uppercase tracking-[0.18em] text-brand-300">
+              Community
+            </div>
+            <h2 className="mt-1 text-xl font-semibold text-ink-50">
+              Clubs & tournaments
+            </h2>
+            <p className="mt-1 text-sm text-ink-400">
+              Find your institute, host a fest, or jump into any tournament
+              running on TradeVerse right now.
+            </p>
           </div>
-          <div className="mt-1 text-xl font-semibold">Clubs</div>
-          <p className="mt-2 text-sm text-ink-300">
-            Your college or CA institute&apos;s finance club. Find it or
-            start one.
-          </p>
-          <div className="mt-4 text-sm text-ink-300 group-hover:text-ink-50">Open →</div>
-        </Link>
+        </div>
 
-        <Link
-          href="/marketplace"
-          className="group rounded-2xl border border-violet-500/40 bg-gradient-to-br from-violet-500/10 to-transparent p-6 hover:border-violet-500"
-        >
-          <div className="text-xs font-medium uppercase tracking-wider text-violet-300">
-            Marketplace
-          </div>
-          <div className="mt-1 text-xl font-semibold">Events</div>
-          <p className="mt-2 text-sm text-ink-300">
-            Every tournament running — official TradeVerse cups plus
-            community-hosted fests. Browse, join by code.
-          </p>
-          <div className="mt-4 text-sm text-violet-300 group-hover:underline">Open →</div>
-        </Link>
-      </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Link
+            href="/clubs"
+            className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
+          >
+            <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
+              Institutes · Clubs
+            </div>
+            <div className="mt-1 text-xl font-semibold">Clubs</div>
+            <p className="mt-2 text-sm text-ink-300">
+              Your college or CA institute&apos;s finance club. Find it or
+              start one.
+            </p>
+            <div className="mt-4 text-sm text-ink-300 group-hover:text-ink-50">Open →</div>
+          </Link>
+
+          <Link
+            href="/marketplace"
+            className="group rounded-2xl border border-violet-500/40 bg-gradient-to-br from-violet-500/10 to-transparent p-6 hover:border-violet-500"
+          >
+            <div className="text-xs font-medium uppercase tracking-wider text-violet-300">
+              Marketplace
+            </div>
+            <div className="mt-1 text-xl font-semibold">Events</div>
+            <p className="mt-2 text-sm text-ink-300">
+              Every tournament running — official TradeVerse cups plus
+              community-hosted fests. Browse, join by code.
+            </p>
+            <div className="mt-4 text-sm text-violet-300 group-hover:underline">Open →</div>
+          </Link>
+        </div>
+      </section>
 
       <div className="mt-10 flex flex-wrap gap-4 text-sm text-ink-400">
         <Link href="/quests" className="hover:text-ink-100">
