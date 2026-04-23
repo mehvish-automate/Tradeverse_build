@@ -359,6 +359,9 @@ function ProfileInner() {
         <Link href="/inbox" className="hover:text-ink-100">
           Inbox →
         </Link>
+        <Link href="/leaderboards" className="hover:text-ink-100">
+          Leaderboards →
+        </Link>
         <Link href="/settings" className="hover:text-ink-100">
           Settings →
         </Link>
