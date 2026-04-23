@@ -1,7 +1,9 @@
 "use client";
 
+import { beatNiftyCount, resolvedParticipations } from "./eventPortfolios";
 import { completedSet } from "./learnProgress";
 import { getMyLeagues } from "./leagues";
+import { listPortfolios } from "./portfolios";
 import { DailyResult, getProgress } from "./progress";
 import { currentWeekStart } from "./leagues";
 import { todayKey } from "./questions";
@@ -24,6 +26,9 @@ export type ProgressCtx = {
   streak: number;
   lessonsDone: number;
   leaguesCount: number;
+  portfoliosCount: number;
+  resolvedEvents: number;
+  beatNiftyEvents: number;
 };
 
 const CLAIM_KEY = (email: string) => `tv.quests.claims.${email}`;
@@ -100,6 +105,37 @@ export const QUESTS: Quest[] = [
       target: 1,
     }),
   },
+  {
+    id: "w-portfolio",
+    window: "weekly",
+    title: "Build a strategy portfolio",
+    description: "One allocation this week. No real money.",
+    rewardXp: 200,
+    progress: ({ portfoliosCount }) => ({
+      done: Math.min(portfoliosCount, 1),
+      target: 1,
+    }),
+  },
+  {
+    id: "w-event",
+    window: "weekly",
+    title: "Submit an event allocation",
+    description: "Pick a sector allocation on any open event.",
+    rewardXp: 150,
+    progress: ({ email }) => {
+      const raw =
+        typeof window !== "undefined"
+          ? localStorage.getItem(`tv.events.${email}`) || "[]"
+          : "[]";
+      let participated = 0;
+      try {
+        participated = (JSON.parse(raw) as { eventId: string }[]).length;
+      } catch {
+        // keep 0
+      }
+      return { done: Math.min(participated, 1), target: 1 };
+    },
+  },
   // --- Monthly ---
   {
     id: "m-plays",
@@ -120,6 +156,17 @@ export const QUESTS: Quest[] = [
     rewardXp: 400,
     progress: ({ windowRuns }) => ({
       done: Math.min(windowRuns.filter((r) => r.correct === r.total).length, 1),
+      target: 1,
+    }),
+  },
+  {
+    id: "m-beat-nifty",
+    window: "monthly",
+    title: "Beat NIFTY on an event",
+    description: "Resolve one event portfolio with positive alpha.",
+    rewardXp: 500,
+    progress: ({ beatNiftyEvents }) => ({
+      done: Math.min(beatNiftyEvents, 1),
       target: 1,
     }),
   },
@@ -154,6 +201,9 @@ export function buildContext(email: string, now = new Date()): ProgressCtx {
     streak: p.streak,
     lessonsDone: completedSet(email).size,
     leaguesCount: getMyLeagues(email).length,
+    portfoliosCount: listPortfolios(email).length,
+    resolvedEvents: resolvedParticipations(email),
+    beatNiftyEvents: beatNiftyCount(email),
   };
 }
 

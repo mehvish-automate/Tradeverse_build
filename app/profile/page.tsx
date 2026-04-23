@@ -9,6 +9,8 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { TRACKS } from "@/lib/learn";
 import { nextLesson, overallCompletion } from "@/lib/learnProgress";
 import { earnedCount } from "@/lib/badges";
+import { EVENTS, isResolved } from "@/lib/events";
+import { myAllocation } from "@/lib/eventPortfolios";
 import { getMyLeagues } from "@/lib/leagues";
 import { getProgress } from "@/lib/progress";
 import { viewQuests } from "@/lib/quests";
@@ -45,6 +47,7 @@ function ProfileInner() {
     questsClaimableXp: 0,
     badgesEarned: 0,
     badgesTotal: 0,
+    eventClaimable: 0,
   });
 
   useEffect(() => {
@@ -61,6 +64,12 @@ function ProfileInner() {
     const qs = viewQuests(user.email);
     const claimable = qs.filter((q) => q.canClaim);
     const badges = earnedCount(user.email);
+    let eventClaimable = 0;
+    for (const ev of EVENTS) {
+      if (!isResolved(ev)) continue;
+      const a = myAllocation(user.email, ev.id);
+      if (a && !a.claimed) eventClaimable++;
+    }
     setProgress({
       streak: p.streak,
       totalXp: p.totalXp,
@@ -76,6 +85,7 @@ function ProfileInner() {
       questsClaimableXp: claimable.reduce((s, q) => s + q.quest.rewardXp, 0),
       badgesEarned: badges.earned,
       badgesTotal: badges.total,
+      eventClaimable,
     });
   }, [user]);
 
@@ -122,10 +132,34 @@ function ProfileInner() {
         />
       </div>
 
+      {progress.eventClaimable > 0 && (
+        <Link
+          href="/events"
+          className="group mt-10 flex items-center justify-between rounded-2xl border border-amber-500/50 bg-gradient-to-br from-amber-500/10 to-transparent p-5 hover:border-amber-500"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🗞️</span>
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-amber-300">
+                Event portfolio
+              </div>
+              <div className="text-sm text-ink-100">
+                {progress.eventClaimable} resolved event
+                {progress.eventClaimable === 1 ? "" : "s"} — claim your reward
+              </div>
+            </div>
+          </div>
+          <span className="text-sm text-amber-300 group-hover:underline">Open →</span>
+        </Link>
+      )}
+
       {progress.questsClaimable > 0 && (
         <Link
           href="/quests"
-          className="group mt-10 flex items-center justify-between rounded-2xl border border-amber-500/50 bg-gradient-to-br from-amber-500/10 to-transparent p-5 hover:border-amber-500"
+          className={
+            "group flex items-center justify-between rounded-2xl border border-amber-500/50 bg-gradient-to-br from-amber-500/10 to-transparent p-5 hover:border-amber-500 " +
+            (progress.eventClaimable > 0 ? "mt-4" : "mt-10")
+          }
         >
           <div className="flex items-center gap-3">
             <span className="text-2xl">🎁</span>

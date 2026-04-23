@@ -1,8 +1,10 @@
 "use client";
 
+import { beatNiftyCount, resolvedParticipations } from "./eventPortfolios";
 import { TRACKS } from "./learn";
 import { completedSet, overallCompletion } from "./learnProgress";
 import { getMyLeagues } from "./leagues";
+import { listPortfolios } from "./portfolios";
 import { getProgress } from "./progress";
 
 export type Badge = {
@@ -25,6 +27,9 @@ export type BadgeCtx = {
   lessonsDone: number;
   tracksCompleted: number;
   leaguesCount: number;
+  portfoliosCount: number;
+  resolvedEvents: number;
+  beatNiftyEvents: number;
 };
 
 export const BADGES: Badge[] = [
@@ -108,6 +113,30 @@ export const BADGES: Badge[] = [
     tier: "bronze",
     earned: ({ leaguesCount }) => leaguesCount >= 1,
   },
+  {
+    id: "b-portfolio-first",
+    title: "Allocator",
+    icon: "📊",
+    description: "Build your first strategy portfolio.",
+    tier: "bronze",
+    earned: ({ portfoliosCount }) => portfoliosCount >= 1,
+  },
+  {
+    id: "b-event-first",
+    title: "Event picker",
+    icon: "🗞️",
+    description: "Resolve your first event portfolio.",
+    tier: "silver",
+    earned: ({ resolvedEvents }) => resolvedEvents >= 1,
+  },
+  {
+    id: "b-event-alpha",
+    title: "Beat the benchmark",
+    icon: "🎯",
+    description: "Finish an event portfolio with positive alpha vs NIFTY.",
+    tier: "gold",
+    earned: ({ beatNiftyEvents }) => beatNiftyEvents >= 1,
+  },
 ];
 
 export function buildBadgeCtx(email: string): BadgeCtx {
@@ -138,6 +167,9 @@ export function buildBadgeCtx(email: string): BadgeCtx {
   const tracksCompleted = TRACKS.filter((t) =>
     t.lessons.every((l) => done.has(l.id)),
   ).length;
+  const portfoliosCount = listPortfolios(email).length;
+  const resolvedEvents = resolvedParticipations(email);
+  const beatNiftyEvents = beatNiftyCount(email);
 
   return {
     email,
@@ -149,6 +181,9 @@ export function buildBadgeCtx(email: string): BadgeCtx {
     lessonsDone: learn.done,
     tracksCompleted,
     leaguesCount: getMyLeagues(email).length,
+    portfoliosCount,
+    resolvedEvents,
+    beatNiftyEvents,
   };
 }
 
