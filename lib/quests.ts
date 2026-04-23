@@ -11,6 +11,7 @@ import { listPortfolios } from "./portfolios";
 import { DailyResult, getProgress } from "./progress";
 import { currentWeekStart } from "./tradeFloors";
 import { todayKey } from "./questions";
+import { ordersPlacedCount } from "./paper";
 import { hostedSessionsCount, mySessions } from "./sessions";
 import { watchlistCount } from "./watchlist";
 
@@ -43,6 +44,7 @@ export type ProgressCtx = {
   sessionsHosted: number;
   sessionsRsvp: number;
   watchlistSize: number;
+  ordersPlaced: number;
 };
 
 const CLAIM_KEY = (email: string) => `tv.quests.claims.${email}`;
@@ -261,6 +263,17 @@ export const QUESTS: Quest[] = [
       target: 3,
     }),
   },
+  {
+    id: "w-trade",
+    window: "weekly",
+    title: "Place 3 paper trades",
+    description: "Get reps on the order ticket — market, limit, or stop.",
+    rewardXp: 150,
+    progress: ({ ordersPlaced }) => ({
+      done: Math.min(ordersPlaced, 3),
+      target: 3,
+    }),
+  },
 ];
 
 function runsForWindow(
@@ -303,6 +316,7 @@ export function buildContext(email: string, now = new Date()): ProgressCtx {
     sessionsHosted: hostedSessionsCount(email),
     sessionsRsvp: mySessions(email).length,
     watchlistSize: watchlistCount(email),
+    ordersPlaced: ordersPlacedCount(email),
   };
 }
 

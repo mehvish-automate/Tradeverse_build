@@ -323,6 +323,29 @@ function ProfileInner() {
         </Link>
       </div>
 
+      <div className="mt-4 grid grid-cols-1 gap-4">
+        <Link
+          href="/trade"
+          className="group rounded-2xl border border-brand-500/40 bg-gradient-to-br from-brand-500/10 to-transparent p-6 hover:border-brand-500"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
+                Paper trading
+              </div>
+              <div className="mt-1 text-xl font-semibold">
+                Trade ticket & L2 book
+              </div>
+              <p className="mt-2 text-sm text-ink-300">
+                Market, Limit, Stop, Stop-Limit — with slippage, latency and
+                partial fills. Starts with ₹10L paper cash. Zero real money.
+              </p>
+            </div>
+            <span className="text-sm text-brand-300 group-hover:underline">Open →</span>
+          </div>
+        </Link>
+      </div>
+
       <section className="mt-10">
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>

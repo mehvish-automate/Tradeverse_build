@@ -10,6 +10,7 @@ import { completedSet, overallCompletion } from "./learnProgress";
 import { getMyTradeFloors } from "./tradeFloors";
 import { listPortfolios } from "./portfolios";
 import { getProgress } from "./progress";
+import { ordersPlacedCount } from "./paper";
 import { hostedSessionsCount } from "./sessions";
 import { watchlistCount } from "./watchlist";
 
@@ -43,6 +44,7 @@ export type BadgeCtx = {
   postsAuthored: number;
   sessionsHosted: number;
   watchlistSize: number;
+  ordersPlaced: number;
 };
 
 export const BADGES: Badge[] = [
@@ -206,6 +208,22 @@ export const BADGES: Badge[] = [
     tier: "bronze",
     earned: ({ watchlistSize }) => watchlistSize >= 5,
   },
+  {
+    id: "b-first-trade",
+    title: "First paper trade",
+    icon: "📝",
+    description: "Place your first paper order.",
+    tier: "bronze",
+    earned: ({ ordersPlaced }) => ordersPlaced >= 1,
+  },
+  {
+    id: "b-ten-trades",
+    title: "Ten clicks in",
+    icon: "⚡",
+    description: "Place ten paper orders across any kinds.",
+    tier: "silver",
+    earned: ({ ordersPlaced }) => ordersPlaced >= 10,
+  },
 ];
 
 export function buildBadgeCtx(email: string): BadgeCtx {
@@ -245,6 +263,7 @@ export function buildBadgeCtx(email: string): BadgeCtx {
   const postsAuthored = postsAuthoredCount(email);
   const sessionsHosted = hostedSessionsCount(email);
   const watchlistSize = watchlistCount(email);
+  const ordersPlaced = ordersPlacedCount(email);
 
   return {
     email,
@@ -266,6 +285,7 @@ export function buildBadgeCtx(email: string): BadgeCtx {
     postsAuthored,
     sessionsHosted,
     watchlistSize,
+    ordersPlaced,
   };
 }
 
