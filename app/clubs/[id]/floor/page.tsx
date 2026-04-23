@@ -21,6 +21,7 @@ import {
   toggleReaction,
 } from "@/lib/floor";
 import { useSession } from "@/lib/session";
+import { useRealtimeFloor } from "@/lib/supabase/realtime";
 
 export default function FloorPage() {
   return (
@@ -43,6 +44,8 @@ function Inner() {
   const [club, setClub] = useState<Club | null | undefined>(undefined);
   const [posts, setPosts] = useState<Post[]>([]);
 
+  const live = useRealtimeFloor();
+
   const refresh = useCallback(() => {
     if (!clubId) return;
     setClub(getClub(clubId));
@@ -51,7 +54,7 @@ function Inner() {
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+  }, [refresh, live.tick]);
 
   if (!user || club === undefined) return null;
   if (club === null) {

@@ -21,6 +21,7 @@ import {
   isOfficial,
 } from "@/lib/officialTournaments";
 import { useSession } from "@/lib/session";
+import { useRealtimeLeaderboards } from "@/lib/supabase/realtime";
 
 export default function FestPage() {
   return (
@@ -86,6 +87,8 @@ function FestInner() {
   const club = official ? null : getClub(fest.clubId);
   const inst = club ? getInstitute(club.instituteId) : null;
   const status = festStatus(fest);
+  const live = useRealtimeLeaderboards();
+  void live.tick;
   const rows = festLeaderboard(fest, user.email);
   const myRank = rows.findIndex((r) => r.email === user.email) + 1;
 
@@ -187,7 +190,15 @@ function FestInner() {
 
       <section className="rounded-2xl border border-ink-700 bg-ink-900/40">
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-700/70 px-5 py-3 text-xs text-ink-400">
-          <span>Leaderboard · {fest.participants.length} players</span>
+          <span className="flex items-center gap-2">
+            <span>Leaderboard · {fest.participants.length} players</span>
+            {live.connected && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
+                Live
+              </span>
+            )}
+          </span>
           <span className="flex items-center gap-3">
             <span>You&apos;re #{myRank || "-"}</span>
             {myRank > 0 && (
