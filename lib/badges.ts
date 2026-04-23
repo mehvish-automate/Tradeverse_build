@@ -10,6 +10,7 @@ import { completedSet, overallCompletion } from "./learnProgress";
 import { getMyTradeFloors } from "./tradeFloors";
 import { listPortfolios } from "./portfolios";
 import { getProgress } from "./progress";
+import { creatorStats } from "./creator";
 import { ordersPlacedCount } from "./paper";
 import { hostedSessionsCount } from "./sessions";
 import { watchlistCount } from "./watchlist";
@@ -45,6 +46,7 @@ export type BadgeCtx = {
   sessionsHosted: number;
   watchlistSize: number;
   ordersPlaced: number;
+  creatorPoints: number;
 };
 
 export const BADGES: Badge[] = [
@@ -224,6 +226,22 @@ export const BADGES: Badge[] = [
     tier: "silver",
     earned: ({ ordersPlaced }) => ordersPlaced >= 10,
   },
+  {
+    id: "b-creator-bronze",
+    title: "Creator unlocked",
+    icon: "🥉",
+    description: "Cross 10 creator points — the first tier of the programme.",
+    tier: "silver",
+    earned: ({ creatorPoints }) => creatorPoints >= 10,
+  },
+  {
+    id: "b-creator-gold",
+    title: "Top creator",
+    icon: "💎",
+    description: "Cross 150 creator points — platinum tier.",
+    tier: "gold",
+    earned: ({ creatorPoints }) => creatorPoints >= 150,
+  },
 ];
 
 export function buildBadgeCtx(email: string): BadgeCtx {
@@ -264,6 +282,7 @@ export function buildBadgeCtx(email: string): BadgeCtx {
   const sessionsHosted = hostedSessionsCount(email);
   const watchlistSize = watchlistCount(email);
   const ordersPlaced = ordersPlacedCount(email);
+  const creatorPoints = creatorStats(email).points;
 
   return {
     email,
@@ -286,6 +305,7 @@ export function buildBadgeCtx(email: string): BadgeCtx {
     sessionsHosted,
     watchlistSize,
     ordersPlaced,
+    creatorPoints,
   };
 }
 

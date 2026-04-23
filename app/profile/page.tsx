@@ -11,6 +11,12 @@ import { nextLesson, overallCompletion } from "@/lib/learnProgress";
 import { isAmbassador } from "@/lib/ambassadors";
 import { earnedCount } from "@/lib/badges";
 import { getInstitute } from "@/lib/clubs";
+import {
+  CreatorTier,
+  TIER_ICONS,
+  TIER_LABELS,
+  creatorStats,
+} from "@/lib/creator";
 import { EVENTS, isResolved } from "@/lib/events";
 import { myAllocation } from "@/lib/eventPortfolios";
 import { getHomeInstitute } from "@/lib/onboarding";
@@ -53,6 +59,7 @@ function ProfileInner() {
     eventClaimable: 0,
     ambassador: false,
     homeInstitute: "",
+    creatorTier: "apprentice" as CreatorTier,
   });
 
   useEffect(() => {
@@ -97,6 +104,7 @@ function ProfileInner() {
         if (!id) return "";
         return getInstitute(id)?.short ?? "";
       })(),
+      creatorTier: creatorStats(user.email).tier,
     });
   }, [user]);
 
@@ -114,6 +122,14 @@ function ProfileInner() {
               <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300">
                 🎖️ Ambassador
               </span>
+            )}
+            {progress.creatorTier !== "apprentice" && (
+              <Link
+                href="/creator"
+                className="rounded-md bg-brand-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-300 hover:bg-brand-500/25"
+              >
+                {TIER_ICONS[progress.creatorTier]} {TIER_LABELS[progress.creatorTier]}
+              </Link>
             )}
           </div>
           <p className="mt-1 text-sm text-ink-400">
@@ -416,6 +432,9 @@ function ProfileInner() {
         </Link>
         <Link href="/leaderboards" className="hover:text-ink-100">
           Leaderboards →
+        </Link>
+        <Link href="/creator" className="hover:text-ink-100">
+          Creator →
         </Link>
         <Link href="/settings" className="hover:text-ink-100">
           Settings →
