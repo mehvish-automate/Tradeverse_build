@@ -11,7 +11,7 @@ import { nextLesson, overallCompletion } from "@/lib/learnProgress";
 import { earnedCount } from "@/lib/badges";
 import { EVENTS, isResolved } from "@/lib/events";
 import { myAllocation } from "@/lib/eventPortfolios";
-import { getMySquads } from "@/lib/squads";
+import { getMyTradeFloors } from "@/lib/tradeFloors";
 import { getProgress } from "@/lib/progress";
 import { viewQuests } from "@/lib/quests";
 import { ageFromDob, useSession } from "@/lib/session";
@@ -36,7 +36,7 @@ function ProfileInner() {
     streak: 0,
     totalXp: 0,
     plays: 0,
-    squads: 0,
+    tradeFloors: 0,
     learnPct: 0,
     learnDone: 0,
     learnTotal: 0,
@@ -53,7 +53,7 @@ function ProfileInner() {
   useEffect(() => {
     if (!user) return;
     const p = getProgress(user.email);
-    const ls = getMySquads(user.email);
+    const ls = getMyTradeFloors(user.email);
     const learn = overallCompletion(user.email);
     const nxt = nextLesson(user.email);
     const nxtLesson = nxt
@@ -74,7 +74,7 @@ function ProfileInner() {
       streak: p.streak,
       totalXp: p.totalXp,
       plays: p.history.length,
-      squads: ls.length,
+      tradeFloors: ls.length,
       learnPct: learn.pct,
       learnDone: learn.done,
       learnTotal: learn.total,
@@ -126,9 +126,9 @@ function ProfileInner() {
           hint="Earn by answering correctly + fast"
         />
         <Stat
-          label="Squads"
-          value={`${progress.squads}`}
-          hint={progress.squads === 0 ? "Create or join one" : "View your squads →"}
+          label="Trade Floors"
+          value={`${progress.tradeFloors}`}
+          hint={progress.tradeFloors === 0 ? "Create or join one" : "View your trade floors →"}
         />
       </div>
 
@@ -225,13 +225,13 @@ function ProfileInner() {
         </Link>
 
         <Link
-          href="/squads"
+          href="/trade-floors"
           className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
         >
           <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
             Social
           </div>
-          <div className="mt-1 text-xl font-semibold">Friend squads</div>
+          <div className="mt-1 text-xl font-semibold">Trade floors</div>
           <p className="mt-2 text-sm text-ink-300">
             3–20 friends, weekly cycle, zero money.
           </p>

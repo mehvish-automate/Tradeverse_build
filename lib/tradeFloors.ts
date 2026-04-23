@@ -2,34 +2,34 @@
 
 import { getProgress } from "./progress";
 
-export type SquadMember = {
+export type TradeFloorMember = {
   email: string;
   displayName: string;
   joinedAt: number;
 };
 
-export type Squad = {
+export type TradeFloor = {
   id: string; // invite/share code, short human-friendly
   name: string;
   createdBy: string; // email
   createdAt: number;
-  members: SquadMember[];
+  members: TradeFloorMember[];
 };
 
-const SQUADS_KEY = "tv.squads";
+const TRADE_FLOORS_KEY = "tv.tradeFloors";
 const MEMBERSHIP_KEY = (email: string) => `tv.memberships.${email}`;
 
-function readSquads(): Squad[] {
+function readTradeFloors(): TradeFloor[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(SQUADS_KEY) || "[]") as Squad[];
+    return JSON.parse(localStorage.getItem(TRADE_FLOORS_KEY) || "[]") as TradeFloor[];
   } catch {
     return [];
   }
 }
 
-function writeSquads(ls: Squad[]) {
-  localStorage.setItem(SQUADS_KEY, JSON.stringify(ls));
+function writeTradeFloors(ls: TradeFloor[]) {
+  localStorage.setItem(TRADE_FLOORS_KEY, JSON.stringify(ls));
 }
 
 function readMemberships(email: string): string[] {
@@ -54,19 +54,19 @@ function genCode(): string {
   return out;
 }
 
-export function createSquad(input: {
+export function createTradeFloor(input: {
   name: string;
   creator: { email: string; displayName: string };
-}): { ok: true; squad: Squad } | { ok: false; error: string } {
+}): { ok: true; tradeFloor: TradeFloor } | { ok: false; error: string } {
   const name = input.name.trim();
-  if (name.length < 3) return { ok: false, error: "Squad name too short." };
-  if (name.length > 40) return { ok: false, error: "Squad name too long." };
+  if (name.length < 3) return { ok: false, error: "Trade Floor name too short." };
+  if (name.length > 40) return { ok: false, error: "Trade Floor name too long." };
 
-  const all = readSquads();
+  const all = readTradeFloors();
   let id = genCode();
   while (all.some((l) => l.id === id)) id = genCode();
 
-  const squad: Squad = {
+  const tradeFloor: TradeFloor = {
     id,
     name,
     createdBy: input.creator.email,
@@ -79,49 +79,49 @@ export function createSquad(input: {
       },
     ],
   };
-  all.push(squad);
-  writeSquads(all);
+  all.push(tradeFloor);
+  writeTradeFloors(all);
 
   const mem = readMemberships(input.creator.email);
-  if (!mem.includes(squad.id)) mem.push(squad.id);
+  if (!mem.includes(tradeFloor.id)) mem.push(tradeFloor.id);
   writeMemberships(input.creator.email, mem);
 
-  return { ok: true, squad };
+  return { ok: true, tradeFloor };
 }
 
-export function joinSquad(input: {
+export function joinTradeFloor(input: {
   code: string;
   user: { email: string; displayName: string };
-}): { ok: true; squad: Squad } | { ok: false; error: string } {
+}): { ok: true; tradeFloor: TradeFloor } | { ok: false; error: string } {
   const code = input.code.trim().toUpperCase();
-  const all = readSquads();
-  const squad = all.find((l) => l.id === code);
-  if (!squad) return { ok: false, error: "No squad with that code." };
-  if (squad.members.length >= 20)
-    return { ok: false, error: "Squad is full (20 members)." };
+  const all = readTradeFloors();
+  const tradeFloor = all.find((l) => l.id === code);
+  if (!tradeFloor) return { ok: false, error: "No trade floor with that code." };
+  if (tradeFloor.members.length >= 20)
+    return { ok: false, error: "Trade Floor is full (20 members)." };
 
-  if (!squad.members.some((m) => m.email === input.user.email)) {
-    squad.members.push({
+  if (!tradeFloor.members.some((m) => m.email === input.user.email)) {
+    tradeFloor.members.push({
       email: input.user.email,
       displayName: input.user.displayName,
       joinedAt: Date.now(),
     });
-    writeSquads(all);
+    writeTradeFloors(all);
 
     const mem = readMemberships(input.user.email);
-    if (!mem.includes(squad.id)) mem.push(squad.id);
+    if (!mem.includes(tradeFloor.id)) mem.push(tradeFloor.id);
     writeMemberships(input.user.email, mem);
   }
-  return { ok: true, squad };
+  return { ok: true, tradeFloor };
 }
 
-export function getSquad(id: string): Squad | null {
-  return readSquads().find((l) => l.id === id.toUpperCase()) ?? null;
+export function getTradeFloor(id: string): TradeFloor | null {
+  return readTradeFloors().find((l) => l.id === id.toUpperCase()) ?? null;
 }
 
-export function getMySquads(email: string): Squad[] {
+export function getMyTradeFloors(email: string): TradeFloor[] {
   const ids = new Set(readMemberships(email));
-  return readSquads().filter(
+  return readTradeFloors().filter(
     (l) => ids.has(l.id) || l.members.some((m) => m.email === email),
   );
 }
@@ -146,7 +146,7 @@ export type LeaderboardRow = {
 };
 
 /**
- * Weekly leaderboard for a squad.
+ * Weekly leaderboard for a trade floor.
  *
  * V1 caveat: each browser only holds its own user's progress in
  * localStorage, so the "live" numbers you see here mix your real score
@@ -154,13 +154,13 @@ export type LeaderboardRow = {
  * this with server-backed scores.
  */
 export function weeklyLeaderboard(
-  squad: Squad,
+  tradeFloor: TradeFloor,
   viewerEmail: string,
 ): LeaderboardRow[] {
   const weekStart = currentWeekStart();
   const weekStartMs = new Date(weekStart).getTime();
 
-  return squad.members
+  return tradeFloor.members
     .map((m) => {
       if (m.email === viewerEmail) {
         const p = getProgress(m.email);
@@ -198,7 +198,7 @@ export function weeklyLeaderboard(
     .sort((a, b) => b.xp - a.xp);
 }
 
-export function whatsappInviteUrl(squad: Squad): string {
-  const text = `Join my TradeVerse squad "${squad.name}". Code: ${squad.id} — https://tradeverse.app/squads/${squad.id}`;
+export function whatsappInviteUrl(tradeFloor: TradeFloor): string {
+  const text = `Join my TradeVerse trade floor "${tradeFloor.name}". Code: ${tradeFloor.id} — https://tradeverse.app/trade-floors/${tradeFloor.id}`;
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }

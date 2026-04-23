@@ -35,6 +35,6 @@ Deploy-ready for Vercel. Connect the repo in the Vercel dashboard; no extra conf
 - Phase 1 — Marketing site (landing, hero offerings, personas, CTA)
 - Phase 2 — Auth & profile (age-gated signup, profile)
 - Phase 3 — Daily Chart Challenge (H1)
-- Phase 4 — Friend Squads (H2)
+- Phase 4 — Friend Trade Floors (H2)
 - Phase 5 — Data layer (mock, then live NSE/BSE)
 - Phase 6 — Polish (analytics, SEO, perf)

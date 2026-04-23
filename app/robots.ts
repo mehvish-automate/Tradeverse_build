@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/", "/profile", "/play", "/squads/"],
+        disallow: ["/api/", "/profile", "/play", "/trade-floors/"],
       },
     ],
     sitemap: "https://tradeverse.app/sitemap.xml",

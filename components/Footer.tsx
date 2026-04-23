@@ -10,7 +10,7 @@ export function Footer() {
           </div>
           <p className="mt-3 max-w-xs text-sm text-ink-400">
             Skill-game for Indian markets. Daily chart challenges. Friend
-            squads. Zero real money.
+            trade floors. Zero real money.
           </p>
           <p className="mt-4 text-xs text-ink-500">
             © {year} TradeVerse. Not an investment advisor. Not a broker. Not a
@@ -24,7 +24,7 @@ export function Footer() {
           </div>
           <ul className="mt-3 space-y-2 text-sm text-ink-300">
             <li><a href="#heroes" className="hover:text-ink-50">Daily Challenge</a></li>
-            <li><a href="#heroes" className="hover:text-ink-50">Friend Squads</a></li>
+            <li><a href="#heroes" className="hover:text-ink-50">Trade Floors</a></li>
           </ul>
         </div>
 

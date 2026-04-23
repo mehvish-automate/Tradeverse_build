@@ -9,18 +9,18 @@ export async function generateMetadata({
   return {
     title: `Invite ${code}`,
     description:
-      "You've been invited to TradeVerse — daily chart challenges and friend squads on Indian markets. No trading, no real money.",
+      "You've been invited to TradeVerse — daily chart challenges and trade floors on Indian markets. No trading, no real money.",
     openGraph: {
       title: `You're invited to TradeVerse (code ${code})`,
       description:
-        "Daily chart challenges and friend squads. Claim your invite and +150 XP.",
+        "Daily chart challenges and trade floors. Claim your invite and +150 XP.",
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
       title: `You're invited to TradeVerse (code ${code})`,
       description:
-        "Daily chart challenges and friend squads. Claim your invite and +150 XP.",
+        "Daily chart challenges and trade floors. Claim your invite and +150 XP.",
     },
   };
 }

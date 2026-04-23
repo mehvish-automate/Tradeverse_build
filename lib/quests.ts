@@ -2,10 +2,10 @@
 
 import { beatNiftyCount, resolvedParticipations } from "./eventPortfolios";
 import { completedSet } from "./learnProgress";
-import { getMySquads } from "./squads";
+import { getMyTradeFloors } from "./tradeFloors";
 import { listPortfolios } from "./portfolios";
 import { DailyResult, getProgress } from "./progress";
-import { currentWeekStart } from "./squads";
+import { currentWeekStart } from "./tradeFloors";
 import { todayKey } from "./questions";
 
 export type QuestWindow = "daily" | "weekly" | "monthly";
@@ -25,7 +25,7 @@ export type ProgressCtx = {
   windowRuns: DailyResult[]; // runs within the active window
   streak: number;
   lessonsDone: number;
-  squadsCount: number;
+  tradeFloorsCount: number;
   portfoliosCount: number;
   resolvedEvents: number;
   beatNiftyEvents: number;
@@ -95,13 +95,13 @@ export const QUESTS: Quest[] = [
     progress: ({ lessonsDone }) => ({ done: Math.min(lessonsDone, 2), target: 2 }),
   },
   {
-    id: "w-squad",
+    id: "w-trade floor",
     window: "weekly",
-    title: "Join or create a squad",
+    title: "Join or create a trade floor",
     description: "Race against friends, not alone.",
     rewardXp: 100,
-    progress: ({ squadsCount }) => ({
-      done: Math.min(squadsCount, 1),
+    progress: ({ tradeFloorsCount }) => ({
+      done: Math.min(tradeFloorsCount, 1),
       target: 1,
     }),
   },
@@ -200,7 +200,7 @@ export function buildContext(email: string, now = new Date()): ProgressCtx {
     windowRuns: p.history,
     streak: p.streak,
     lessonsDone: completedSet(email).size,
-    squadsCount: getMySquads(email).length,
+    tradeFloorsCount: getMyTradeFloors(email).length,
     portfoliosCount: listPortfolios(email).length,
     resolvedEvents: resolvedParticipations(email),
     beatNiftyEvents: beatNiftyCount(email),

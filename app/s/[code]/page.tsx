@@ -32,7 +32,7 @@ export default function SharePage() {
             {handle ? `@${handle} invited you to TradeVerse` : "Join TradeVerse"}
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-sm text-ink-300">
-            Daily chart challenges and friend squads on live Indian market
+            Daily chart challenges and trade floors on live Indian market
             data. Not a trading app. No real money. Never.
           </p>
           <div className="mt-3 inline-flex items-center gap-2 rounded-md border border-ink-700 bg-ink-900 px-3 py-1.5 text-xs text-ink-200">
@@ -61,7 +61,7 @@ export default function SharePage() {
         <div className="mt-8 grid grid-cols-1 gap-3 text-sm text-ink-300 md:grid-cols-3">
           <Bullet label="5-min daily" body="System-generated chart questions from live market data." />
           <Bullet label="Zero money" body="No broker, no KYC, no demat. Compete on skill only." />
-          <Bullet label="WhatsApp-native" body="Pull your group chat into a squad in 2 taps." />
+          <Bullet label="WhatsApp-native" body="Pull your group chat into a trade floor in 2 taps." />
         </div>
       </main>
     </>
