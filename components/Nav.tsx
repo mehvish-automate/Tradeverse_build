@@ -1,11 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
+import { unreadCount } from "@/lib/notifications";
 import { useSession } from "@/lib/session";
 
 export function Nav() {
   const { user, loaded } = useSession();
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    setUnread(unreadCount(user.email));
+    const onFocus = () => setUnread(unreadCount(user.email));
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [user]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-ink-900/80 bg-ink-950/70 backdrop-blur">
@@ -27,6 +38,18 @@ export function Nav() {
               className="hidden rounded-md border border-ink-700 px-3 py-1.5 text-xs font-medium text-ink-100 hover:bg-ink-900 md:inline-block"
             >
               Learn
+            </Link>
+            <Link
+              href="/inbox"
+              aria-label="Inbox"
+              className="relative rounded-md border border-ink-700 px-2.5 py-1.5 text-xs font-medium text-ink-100 hover:bg-ink-900"
+            >
+              <span aria-hidden>🔔</span>
+              {unread > 0 && (
+                <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-semibold text-ink-950">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
             </Link>
             <Link
               href="/profile"
