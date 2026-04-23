@@ -8,6 +8,7 @@ import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import { TRACKS } from "@/lib/learn";
 import { nextLesson, overallCompletion } from "@/lib/learnProgress";
+import { earnedCount } from "@/lib/badges";
 import { getMyLeagues } from "@/lib/leagues";
 import { getProgress } from "@/lib/progress";
 import { viewQuests } from "@/lib/quests";
@@ -42,6 +43,8 @@ function ProfileInner() {
     nextTrackTitle: "",
     questsClaimable: 0,
     questsClaimableXp: 0,
+    badgesEarned: 0,
+    badgesTotal: 0,
   });
 
   useEffect(() => {
@@ -57,6 +60,7 @@ function ProfileInner() {
       : null;
     const qs = viewQuests(user.email);
     const claimable = qs.filter((q) => q.canClaim);
+    const badges = earnedCount(user.email);
     setProgress({
       streak: p.streak,
       totalXp: p.totalXp,
@@ -70,6 +74,8 @@ function ProfileInner() {
       nextTrackTitle: nxt?.track.title ?? "",
       questsClaimable: claimable.length,
       questsClaimableXp: claimable.reduce((s, q) => s + q.quest.rewardXp, 0),
+      badgesEarned: badges.earned,
+      badgesTotal: badges.total,
     });
   }, [user]);
 
@@ -217,9 +223,12 @@ function ProfileInner() {
         </Link>
       </div>
 
-      <div className="mt-10 flex gap-4 text-sm text-ink-400">
+      <div className="mt-10 flex flex-wrap gap-4 text-sm text-ink-400">
         <Link href="/quests" className="hover:text-ink-100">
           Quests →
+        </Link>
+        <Link href="/badges" className="hover:text-ink-100">
+          Badges {progress.badgesEarned}/{progress.badgesTotal} →
         </Link>
         <Link href="/history" className="hover:text-ink-100">
           History →
