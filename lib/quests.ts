@@ -4,12 +4,14 @@ import { myAmbassadorships } from "./ambassadors";
 import { myClubs } from "./clubs";
 import { beatNiftyCount, resolvedParticipations } from "./eventPortfolios";
 import { festsParticipatedCount, festsWonCount } from "./fests";
+import { postsAuthoredCount } from "./floor";
 import { completedSet } from "./learnProgress";
 import { getMyTradeFloors } from "./tradeFloors";
 import { listPortfolios } from "./portfolios";
 import { DailyResult, getProgress } from "./progress";
 import { currentWeekStart } from "./tradeFloors";
 import { todayKey } from "./questions";
+import { hostedSessionsCount, mySessions } from "./sessions";
 
 export type QuestWindow = "daily" | "weekly" | "monthly";
 
@@ -36,6 +38,9 @@ export type ProgressCtx = {
   festsJoined: number;
   festsWon: number;
   ambassadorships: number;
+  postsAuthored: number;
+  sessionsHosted: number;
+  sessionsRsvp: number;
 };
 
 const CLAIM_KEY = (email: string) => `tv.quests.claims.${email}`;
@@ -210,6 +215,39 @@ export const QUESTS: Quest[] = [
       target: 1,
     }),
   },
+  {
+    id: "w-post",
+    window: "weekly",
+    title: "Post on a club floor",
+    description: "Share a chart read, take, or portfolio note.",
+    rewardXp: 100,
+    progress: ({ postsAuthored }) => ({
+      done: Math.min(postsAuthored, 1),
+      target: 1,
+    }),
+  },
+  {
+    id: "w-rsvp",
+    window: "weekly",
+    title: "RSVP to a live session",
+    description: "Show up to a club walkthrough, AMA, or market-open watch.",
+    rewardXp: 100,
+    progress: ({ sessionsRsvp }) => ({
+      done: Math.min(sessionsRsvp, 1),
+      target: 1,
+    }),
+  },
+  {
+    id: "m-host",
+    window: "monthly",
+    title: "Host a live session",
+    description: "Schedule and run your own club session.",
+    rewardXp: 400,
+    progress: ({ sessionsHosted }) => ({
+      done: Math.min(sessionsHosted, 1),
+      target: 1,
+    }),
+  },
 ];
 
 function runsForWindow(
@@ -248,6 +286,9 @@ export function buildContext(email: string, now = new Date()): ProgressCtx {
     festsJoined: festsParticipatedCount(email),
     festsWon: festsWonCount(email),
     ambassadorships: myAmbassadorships(email).length,
+    postsAuthored: postsAuthoredCount(email),
+    sessionsHosted: hostedSessionsCount(email),
+    sessionsRsvp: mySessions(email).length,
   };
 }
 

@@ -4,11 +4,13 @@ import { isAmbassador } from "./ambassadors";
 import { myClubs } from "./clubs";
 import { beatNiftyCount, resolvedParticipations } from "./eventPortfolios";
 import { festsParticipatedCount, festsWonCount } from "./fests";
+import { postsAuthoredCount } from "./floor";
 import { TRACKS } from "./learn";
 import { completedSet, overallCompletion } from "./learnProgress";
 import { getMyTradeFloors } from "./tradeFloors";
 import { listPortfolios } from "./portfolios";
 import { getProgress } from "./progress";
+import { hostedSessionsCount } from "./sessions";
 
 export type Badge = {
   id: string;
@@ -37,6 +39,8 @@ export type BadgeCtx = {
   festsJoined: number;
   festsWon: number;
   isAmbassador: boolean;
+  postsAuthored: number;
+  sessionsHosted: number;
 };
 
 export const BADGES: Badge[] = [
@@ -176,6 +180,22 @@ export const BADGES: Badge[] = [
     tier: "gold",
     earned: ({ isAmbassador }) => isAmbassador,
   },
+  {
+    id: "b-first-post",
+    title: "Trader on the floor",
+    icon: "💬",
+    description: "Post your first take on a club trading floor.",
+    tier: "bronze",
+    earned: ({ postsAuthored }) => postsAuthored >= 1,
+  },
+  {
+    id: "b-session-host",
+    title: "Session host",
+    icon: "🎤",
+    description: "Schedule and host your first live session.",
+    tier: "silver",
+    earned: ({ sessionsHosted }) => sessionsHosted >= 1,
+  },
 ];
 
 export function buildBadgeCtx(email: string): BadgeCtx {
@@ -212,6 +232,8 @@ export function buildBadgeCtx(email: string): BadgeCtx {
   const clubsCount = myClubs(email).length;
   const festsJoined = festsParticipatedCount(email);
   const festsWon = festsWonCount(email);
+  const postsAuthored = postsAuthoredCount(email);
+  const sessionsHosted = hostedSessionsCount(email);
 
   return {
     email,
@@ -230,6 +252,8 @@ export function buildBadgeCtx(email: string): BadgeCtx {
     festsJoined,
     festsWon,
     isAmbassador: isAmbassador(email),
+    postsAuthored,
+    sessionsHosted,
   };
 }
 

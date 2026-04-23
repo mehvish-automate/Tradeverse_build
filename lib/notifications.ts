@@ -14,6 +14,7 @@ import { rewardLog } from "./rewards";
 import { viewQuests } from "./quests";
 import { EVENTS, isResolved as eventResolved } from "./events";
 import { myAllocation } from "./eventPortfolios";
+import { mySessions, sessionStatus } from "./sessions";
 
 export type NotificationKind =
   | "reward"
@@ -22,7 +23,9 @@ export type NotificationKind =
   | "event-resolved"
   | "fest-live"
   | "fest-starting"
-  | "fest-ending";
+  | "fest-ending"
+  | "session-starting"
+  | "session-live";
 
 export type Notification = {
   id: string;
@@ -158,6 +161,32 @@ export function buildFeed(email: string, now = new Date()): Notification[] {
         ts: endMs,
         href: `/fests/${fresh.id}`,
         emoji: "⏱️",
+      });
+    }
+  }
+
+  // Upcoming live sessions the user RSVP'd to.
+  for (const s of mySessions(email)) {
+    const status = sessionStatus(s, nowMs);
+    if (status === "live") {
+      out.push({
+        id: `session:live:${s.id}`,
+        kind: "session-live",
+        title: `Live now: ${s.title}`,
+        body: `Hosted by @${s.hostDisplayName}. Join if you can.`,
+        ts: s.startsAt,
+        href: `/clubs/${s.clubId}/sessions`,
+        emoji: "🎤",
+      });
+    } else if (status === "upcoming" && s.startsAt - nowMs < 6 * 60 * 60 * 1000) {
+      out.push({
+        id: `session:soon:${s.id}`,
+        kind: "session-starting",
+        title: `${s.title} starts soon`,
+        body: `${new Date(s.startsAt).toLocaleString()} · hosted by @${s.hostDisplayName}`,
+        ts: s.startsAt,
+        href: `/clubs/${s.clubId}/sessions`,
+        emoji: "⏰",
       });
     }
   }
