@@ -6,7 +6,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { QuestionView } from "@/components/QuestionView";
 import { DailyResult, recordResult, scoreAnswer, todayResult } from "@/lib/progress";
 import { dailyQuestions, todayKey } from "@/lib/questions";
-import { codeFor, shareLinks } from "@/lib/referral";
 import {
   RivalEvent,
   awardStreakFreeze,
@@ -273,18 +272,15 @@ function ShareButton({
   user: User;
   result: DailyResult;
 }) {
-  const code = codeFor(user.email);
-  const copy = `I scored ${result.correct}/${result.total} on today's TradeVerse chart challenge.`;
-  const links = shareLinks(code, copy);
+  const accuracy = Math.round((result.correct / result.total) * 100);
+  const href = `/s/card?kind=run&handle=${encodeURIComponent(user.displayName)}&score=${result.correct}%2F${result.total}&accuracy=${accuracy}&xp=${result.xp}&date=${result.dateKey}`;
   return (
-    <a
-      href={links.whatsapp}
-      target="_blank"
-      rel="noopener noreferrer"
+    <Link
+      href={href}
       className="rounded-lg border border-brand-500/60 bg-brand-500/10 px-4 py-2 text-sm font-medium text-brand-200 hover:bg-brand-500/20"
     >
-      Share on WhatsApp
-    </a>
+      Share card →
+    </Link>
   );
 }
 

@@ -81,9 +81,26 @@ function Inner() {
 
       {tab === "players" && (
         <section className="overflow-hidden rounded-2xl border border-ink-700">
-          <header className="flex items-center justify-between border-b border-ink-700/70 bg-ink-900/60 px-5 py-3 text-xs text-ink-400">
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-700/70 bg-ink-900/60 px-5 py-3 text-xs text-ink-400">
             <span>Top players · lifetime XP</span>
-            <span>You&apos;re #{myRank || "-"}</span>
+            <span className="flex items-center gap-3">
+              <span>You&apos;re #{myRank || "-"}</span>
+              {myRank > 0 && (
+                <Link
+                  href={
+                    "/s/card?kind=rank" +
+                    `&handle=${encodeURIComponent(user.displayName)}` +
+                    `&context=${encodeURIComponent("TradeVerse global · lifetime XP")}` +
+                    `&rank=${myRank}` +
+                    `&outOf=${players.length}` +
+                    `&xp=${players[myRank - 1]?.xp ?? 0}`
+                  }
+                  className="rounded-md border border-ink-700 px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-200 hover:bg-ink-900"
+                >
+                  Share card
+                </Link>
+              )}
+            </span>
           </header>
           <ol className="divide-y divide-ink-900">
             {players.map((r, i) => (
