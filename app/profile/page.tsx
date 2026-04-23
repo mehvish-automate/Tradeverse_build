@@ -223,24 +223,35 @@ function ProfileInner() {
         </Link>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Link
           href="/portfolios"
           className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
-                P3 · Portfolios
-              </div>
-              <div className="mt-1 text-xl font-semibold">Virtual portfolios</div>
-              <p className="mt-2 text-sm text-ink-300">
-                Build a paper ₹1L allocation. See it move against NIFTY.
-                Zero real money.
-              </p>
-            </div>
-            <span className="text-sm text-ink-300 group-hover:text-ink-50">Open →</span>
+          <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
+            P3 · Portfolios
           </div>
+          <div className="mt-1 text-xl font-semibold">Virtual portfolios</div>
+          <p className="mt-2 text-sm text-ink-300">
+            Build a paper ₹1L allocation. See it move against NIFTY. Zero
+            real money.
+          </p>
+          <div className="mt-4 text-sm text-ink-300 group-hover:text-ink-50">Open →</div>
+        </Link>
+
+        <Link
+          href="/events"
+          className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
+        >
+          <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
+            P3 · Events
+          </div>
+          <div className="mt-1 text-xl font-semibold">Event portfolios</div>
+          <p className="mt-2 text-sm text-ink-300">
+            Budget week, IT earnings, festive auto. Pick an allocation,
+            resolve and see how you ranked.
+          </p>
+          <div className="mt-4 text-sm text-ink-300 group-hover:text-ink-50">Open →</div>
         </Link>
       </div>
 

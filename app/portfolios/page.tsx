@@ -59,16 +59,24 @@ function PortfoliosInner() {
 
   return (
     <>
-      <div className="mb-8">
-        <div className="text-xs font-medium uppercase tracking-[0.18em] text-brand-300">
-          P3 · Portfolios
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-brand-300">
+            P3 · Portfolios
+          </div>
+          <h1 className="mt-1 text-3xl font-semibold">Virtual portfolios</h1>
+          <p className="mt-2 max-w-2xl text-sm text-ink-400">
+            Build a ₹1,00,000 paper allocation, see how it would&apos;ve done vs
+            NIFTY. No real money changes hands — ever. Scored on skill, not
+            capital.
+          </p>
         </div>
-        <h1 className="mt-1 text-3xl font-semibold">Virtual portfolios</h1>
-        <p className="mt-2 max-w-2xl text-sm text-ink-400">
-          Build a ₹1,00,000 paper allocation, see how it would&apos;ve done vs
-          NIFTY. No real money changes hands — ever. Scored on skill, not
-          capital.
-        </p>
+        <Link
+          href="/events"
+          className="shrink-0 rounded-lg border border-ink-700 bg-ink-900/60 px-4 py-2.5 text-sm text-ink-100 hover:border-ink-500"
+        >
+          Event portfolios →
+        </Link>
       </div>
 
       <section className="mb-10 rounded-2xl border border-brand-500/40 bg-brand-500/5 p-6">
