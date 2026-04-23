@@ -1,24 +1,24 @@
 -- TradeVerse Postgres schema for Supabase.
 --
--- Run this once against a fresh Supabase project:
---   psql "$DATABASE_URL" -f supabase/schema.sql
--- or paste into the SQL editor in the Supabase dashboard.
+-- Run once against a fresh Supabase project:
+--   - SQL editor → paste this whole file → Run
+--   - or: psql "$DATABASE_URL" -f supabase/schema.sql
 --
--- RLS is enabled on every table. Policies default to:
---   - authenticated users can SELECT public things (clubs, fests, etc.)
---   - a user can only INSERT/UPDATE/DELETE rows they own
--- Extend the policies as you add admin / ambassador paths.
+-- Safe to re-run: every statement is IF NOT EXISTS / DROP ... IF EXISTS.
+--
+-- Structure:
+--   Part 1 — All CREATE TABLE statements (so policies can forward-ref).
+--   Part 2 — ENABLE ROW LEVEL SECURITY + policies.
+--   Part 3 — Trigger function + trigger.
+--   Part 4 — Indexes.
 
-set local statement_timeout = '30s';
+-- ============================================================================
+-- Part 1 — Tables
+-- ============================================================================
 
--- --------------------------------------------------------------------------
--- Extensions
--- --------------------------------------------------------------------------
 create extension if not exists "pgcrypto";
 
--- --------------------------------------------------------------------------
--- Identity
--- --------------------------------------------------------------------------
+-- --- Identity ---
 create table if not exists public.profiles (
   id              uuid primary key references auth.users on delete cascade,
   email           text not null unique,
@@ -29,27 +29,7 @@ create table if not exists public.profiles (
   onboarded       boolean not null default false
 );
 
-alter table public.profiles enable row level security;
-
-create policy "profiles are world-readable by authed users"
-  on public.profiles for select
-  to authenticated
-  using (true);
-
-create policy "users update their own profile"
-  on public.profiles for update
-  to authenticated
-  using (auth.uid() = id)
-  with check (auth.uid() = id);
-
-create policy "users insert their own profile"
-  on public.profiles for insert
-  to authenticated
-  with check (auth.uid() = id);
-
--- --------------------------------------------------------------------------
--- Progress (daily challenge history + streak rollups)
--- --------------------------------------------------------------------------
+-- --- Progress ---
 create table if not exists public.daily_results (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references auth.users on delete cascade,
@@ -62,18 +42,6 @@ create table if not exists public.daily_results (
   unique (user_id, date_key)
 );
 
-alter table public.daily_results enable row level security;
-
-create policy "own results read"
-  on public.daily_results for select
-  to authenticated
-  using (auth.uid() = user_id);
-
-create policy "own results insert"
-  on public.daily_results for insert
-  to authenticated
-  with check (auth.uid() = user_id);
-
 create table if not exists public.user_stats (
   user_id         uuid primary key references auth.users on delete cascade,
   streak          integer not null default 0,
@@ -84,45 +52,13 @@ create table if not exists public.user_stats (
   updated_at      timestamptz not null default now()
 );
 
-alter table public.user_stats enable row level security;
-
-create policy "own stats read"
-  on public.user_stats for select
-  to authenticated
-  using (auth.uid() = user_id);
-
-create policy "own stats write"
-  on public.user_stats for all
-  to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
--- --------------------------------------------------------------------------
--- Trade floors (friend-group weekly leagues)
--- --------------------------------------------------------------------------
+-- --- Compete: trade floors ---
 create table if not exists public.trade_floors (
   id          text primary key check (char_length(id) = 6),
   name        text not null check (char_length(name) between 3 and 40),
   created_by  uuid not null references auth.users on delete cascade,
   created_at  timestamptz not null default now()
 );
-
-alter table public.trade_floors enable row level security;
-
-create policy "trade floors readable by members"
-  on public.trade_floors for select
-  to authenticated
-  using (
-    exists (
-      select 1 from public.trade_floor_members m
-      where m.trade_floor_id = trade_floors.id and m.user_id = auth.uid()
-    )
-  );
-
-create policy "authenticated can create"
-  on public.trade_floors for insert
-  to authenticated
-  with check (auth.uid() = created_by);
 
 create table if not exists public.trade_floor_members (
   trade_floor_id text not null references public.trade_floors on delete cascade,
@@ -131,33 +67,7 @@ create table if not exists public.trade_floor_members (
   primary key (trade_floor_id, user_id)
 );
 
-alter table public.trade_floor_members enable row level security;
-
-create policy "members readable"
-  on public.trade_floor_members for select
-  to authenticated
-  using (
-    user_id = auth.uid()
-    or exists (
-      select 1 from public.trade_floor_members m2
-      where m2.trade_floor_id = trade_floor_members.trade_floor_id
-        and m2.user_id = auth.uid()
-    )
-  );
-
-create policy "self join"
-  on public.trade_floor_members for insert
-  to authenticated
-  with check (user_id = auth.uid());
-
-create policy "self leave"
-  on public.trade_floor_members for delete
-  to authenticated
-  using (user_id = auth.uid());
-
--- --------------------------------------------------------------------------
--- Clubs + fests
--- --------------------------------------------------------------------------
+-- --- Clubs + fests ---
 create table if not exists public.clubs (
   id            uuid primary key default gen_random_uuid(),
   institute_id  text not null,
@@ -167,18 +77,6 @@ create table if not exists public.clubs (
   created_at    timestamptz not null default now()
 );
 
-alter table public.clubs enable row level security;
-
-create policy "clubs public read"
-  on public.clubs for select
-  to authenticated
-  using (true);
-
-create policy "authed create club"
-  on public.clubs for insert
-  to authenticated
-  with check (auth.uid() = created_by);
-
 create table if not exists public.club_members (
   club_id    uuid not null references public.clubs on delete cascade,
   user_id    uuid not null references auth.users on delete cascade,
@@ -186,23 +84,6 @@ create table if not exists public.club_members (
   joined_at  timestamptz not null default now(),
   primary key (club_id, user_id)
 );
-
-alter table public.club_members enable row level security;
-
-create policy "club members public read"
-  on public.club_members for select
-  to authenticated
-  using (true);
-
-create policy "self join club"
-  on public.club_members for insert
-  to authenticated
-  with check (user_id = auth.uid());
-
-create policy "self leave club"
-  on public.club_members for delete
-  to authenticated
-  using (user_id = auth.uid());
 
 create table if not exists public.fests (
   id           text primary key check (char_length(id) between 6 and 16),
@@ -219,25 +100,6 @@ create table if not exists public.fests (
   check (end_date >= start_date)
 );
 
-alter table public.fests enable row level security;
-
-create policy "fests public read"
-  on public.fests for select
-  to authenticated
-  using (true);
-
-create policy "club owner creates fest"
-  on public.fests for insert
-  to authenticated
-  with check (
-    exists (
-      select 1 from public.club_members m
-      where m.club_id = fests.club_id
-        and m.user_id = auth.uid()
-        and m.role = 'owner'
-    )
-  );
-
 create table if not exists public.fest_participants (
   fest_id    text not null references public.fests on delete cascade,
   user_id    uuid not null references auth.users on delete cascade,
@@ -245,21 +107,7 @@ create table if not exists public.fest_participants (
   primary key (fest_id, user_id)
 );
 
-alter table public.fest_participants enable row level security;
-
-create policy "fest participants public read"
-  on public.fest_participants for select
-  to authenticated
-  using (true);
-
-create policy "self join fest"
-  on public.fest_participants for insert
-  to authenticated
-  with check (user_id = auth.uid());
-
--- --------------------------------------------------------------------------
--- Club trading floor (posts + reactions + comments)
--- --------------------------------------------------------------------------
+-- --- Club trading floor (posts + reactions + comments) ---
 create table if not exists public.floor_posts (
   id          uuid primary key default gen_random_uuid(),
   club_id     uuid not null references public.clubs on delete cascade,
@@ -270,28 +118,6 @@ create table if not exists public.floor_posts (
   created_at  timestamptz not null default now()
 );
 
-alter table public.floor_posts enable row level security;
-
-create policy "floor posts readable by club members"
-  on public.floor_posts for select
-  to authenticated
-  using (
-    exists (
-      select 1 from public.club_members m
-      where m.club_id = floor_posts.club_id and m.user_id = auth.uid()
-    )
-  );
-
-create policy "own post insert"
-  on public.floor_posts for insert
-  to authenticated
-  with check (user_id = auth.uid());
-
-create policy "own post delete"
-  on public.floor_posts for delete
-  to authenticated
-  using (user_id = auth.uid());
-
 create table if not exists public.floor_reactions (
   post_id     uuid not null references public.floor_posts on delete cascade,
   user_id     uuid not null references auth.users on delete cascade,
@@ -299,23 +125,6 @@ create table if not exists public.floor_reactions (
   created_at  timestamptz not null default now(),
   primary key (post_id, user_id)
 );
-
-alter table public.floor_reactions enable row level security;
-
-create policy "reactions readable"
-  on public.floor_reactions for select
-  to authenticated
-  using (true);
-
-create policy "self react"
-  on public.floor_reactions for insert
-  to authenticated
-  with check (user_id = auth.uid());
-
-create policy "self unreact / change"
-  on public.floor_reactions for delete
-  to authenticated
-  using (user_id = auth.uid());
 
 create table if not exists public.floor_comments (
   id          uuid primary key default gen_random_uuid(),
@@ -325,21 +134,7 @@ create table if not exists public.floor_comments (
   created_at  timestamptz not null default now()
 );
 
-alter table public.floor_comments enable row level security;
-
-create policy "comments readable"
-  on public.floor_comments for select
-  to authenticated
-  using (true);
-
-create policy "self comment"
-  on public.floor_comments for insert
-  to authenticated
-  with check (user_id = auth.uid());
-
--- --------------------------------------------------------------------------
--- Strategy portfolios + paper trading
--- --------------------------------------------------------------------------
+-- --- Strategy portfolios + paper trading ---
 create table if not exists public.portfolios (
   id               uuid primary key default gen_random_uuid(),
   user_id          uuid not null references auth.users on delete cascade,
@@ -351,14 +146,6 @@ create table if not exists public.portfolios (
   created_at       timestamptz not null default now()
 );
 
-alter table public.portfolios enable row level security;
-
-create policy "own portfolios"
-  on public.portfolios for all
-  to authenticated
-  using (user_id = auth.uid())
-  with check (user_id = auth.uid());
-
 create table if not exists public.portfolio_holdings (
   portfolio_id uuid not null references public.portfolios on delete cascade,
   symbol       text not null,
@@ -366,31 +153,11 @@ create table if not exists public.portfolio_holdings (
   primary key (portfolio_id, symbol)
 );
 
-alter table public.portfolio_holdings enable row level security;
-
-create policy "holdings scoped to owner"
-  on public.portfolio_holdings for all
-  to authenticated
-  using (
-    exists (select 1 from public.portfolios p where p.id = portfolio_holdings.portfolio_id and p.user_id = auth.uid())
-  )
-  with check (
-    exists (select 1 from public.portfolios p where p.id = portfolio_holdings.portfolio_id and p.user_id = auth.uid())
-  );
-
 create table if not exists public.paper_accounts (
   user_id     uuid primary key references auth.users on delete cascade,
   cash        numeric not null default 1000000,
   created_at  timestamptz not null default now()
 );
-
-alter table public.paper_accounts enable row level security;
-
-create policy "own paper account"
-  on public.paper_accounts for all
-  to authenticated
-  using (user_id = auth.uid())
-  with check (user_id = auth.uid());
 
 create table if not exists public.paper_holdings (
   user_id    uuid not null references auth.users on delete cascade,
@@ -399,14 +166,6 @@ create table if not exists public.paper_holdings (
   avg_price  numeric not null check (avg_price >= 0),
   primary key (user_id, symbol)
 );
-
-alter table public.paper_holdings enable row level security;
-
-create policy "own paper holdings"
-  on public.paper_holdings for all
-  to authenticated
-  using (user_id = auth.uid())
-  with check (user_id = auth.uid());
 
 create table if not exists public.orders (
   id               uuid primary key default gen_random_uuid(),
@@ -425,18 +184,207 @@ create table if not exists public.orders (
   fills            jsonb not null default '[]'::jsonb
 );
 
-alter table public.orders enable row level security;
+-- ============================================================================
+-- Part 2 — Row-Level Security + policies
+-- ============================================================================
 
-create policy "own orders"
-  on public.orders for all
-  to authenticated
-  using (user_id = auth.uid())
+alter table public.profiles            enable row level security;
+alter table public.daily_results       enable row level security;
+alter table public.user_stats          enable row level security;
+alter table public.trade_floors        enable row level security;
+alter table public.trade_floor_members enable row level security;
+alter table public.clubs               enable row level security;
+alter table public.club_members        enable row level security;
+alter table public.fests               enable row level security;
+alter table public.fest_participants   enable row level security;
+alter table public.floor_posts         enable row level security;
+alter table public.floor_reactions     enable row level security;
+alter table public.floor_comments      enable row level security;
+alter table public.portfolios          enable row level security;
+alter table public.portfolio_holdings  enable row level security;
+alter table public.paper_accounts      enable row level security;
+alter table public.paper_holdings      enable row level security;
+alter table public.orders              enable row level security;
+
+-- Idempotency helper: drop then recreate each policy.
+drop policy if exists "profiles world-readable"        on public.profiles;
+drop policy if exists "profiles self update"           on public.profiles;
+drop policy if exists "profiles self insert"           on public.profiles;
+drop policy if exists "own results read"               on public.daily_results;
+drop policy if exists "own results insert"             on public.daily_results;
+drop policy if exists "own stats read"                 on public.user_stats;
+drop policy if exists "own stats write"                on public.user_stats;
+drop policy if exists "trade floors readable"          on public.trade_floors;
+drop policy if exists "trade floors create"            on public.trade_floors;
+drop policy if exists "members readable"               on public.trade_floor_members;
+drop policy if exists "self join floor"                on public.trade_floor_members;
+drop policy if exists "self leave floor"               on public.trade_floor_members;
+drop policy if exists "clubs public read"              on public.clubs;
+drop policy if exists "clubs create"                   on public.clubs;
+drop policy if exists "club members public read"       on public.club_members;
+drop policy if exists "self join club"                 on public.club_members;
+drop policy if exists "self leave club"                on public.club_members;
+drop policy if exists "fests public read"              on public.fests;
+drop policy if exists "fests owner creates"            on public.fests;
+drop policy if exists "fest participants public read"  on public.fest_participants;
+drop policy if exists "self join fest"                 on public.fest_participants;
+drop policy if exists "floor posts readable"           on public.floor_posts;
+drop policy if exists "own post insert"                on public.floor_posts;
+drop policy if exists "own post delete"                on public.floor_posts;
+drop policy if exists "reactions readable"             on public.floor_reactions;
+drop policy if exists "self react"                     on public.floor_reactions;
+drop policy if exists "self unreact"                   on public.floor_reactions;
+drop policy if exists "comments readable"              on public.floor_comments;
+drop policy if exists "self comment"                   on public.floor_comments;
+drop policy if exists "own portfolios"                 on public.portfolios;
+drop policy if exists "holdings scoped to owner"       on public.portfolio_holdings;
+drop policy if exists "own paper account"              on public.paper_accounts;
+drop policy if exists "own paper holdings"             on public.paper_holdings;
+drop policy if exists "own orders"                     on public.orders;
+
+-- profiles
+create policy "profiles world-readable"
+  on public.profiles for select to authenticated using (true);
+create policy "profiles self update"
+  on public.profiles for update to authenticated
+  using (auth.uid() = id) with check (auth.uid() = id);
+create policy "profiles self insert"
+  on public.profiles for insert to authenticated with check (auth.uid() = id);
+
+-- daily_results
+create policy "own results read"
+  on public.daily_results for select to authenticated using (auth.uid() = user_id);
+create policy "own results insert"
+  on public.daily_results for insert to authenticated with check (auth.uid() = user_id);
+
+-- user_stats
+create policy "own stats read"
+  on public.user_stats for select to authenticated using (auth.uid() = user_id);
+create policy "own stats write"
+  on public.user_stats for all to authenticated
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- trade_floors
+create policy "trade floors readable"
+  on public.trade_floors for select to authenticated
+  using (
+    exists (
+      select 1 from public.trade_floor_members m
+      where m.trade_floor_id = trade_floors.id and m.user_id = auth.uid()
+    )
+  );
+create policy "trade floors create"
+  on public.trade_floors for insert to authenticated
+  with check (auth.uid() = created_by);
+
+-- trade_floor_members
+create policy "members readable"
+  on public.trade_floor_members for select to authenticated
+  using (
+    user_id = auth.uid()
+    or exists (
+      select 1 from public.trade_floor_members m2
+      where m2.trade_floor_id = trade_floor_members.trade_floor_id
+        and m2.user_id = auth.uid()
+    )
+  );
+create policy "self join floor"
+  on public.trade_floor_members for insert to authenticated
   with check (user_id = auth.uid());
+create policy "self leave floor"
+  on public.trade_floor_members for delete to authenticated
+  using (user_id = auth.uid());
 
--- --------------------------------------------------------------------------
--- Triggers
--- --------------------------------------------------------------------------
--- Auto-create a profiles row when a new auth.users row lands (magic-link flow).
+-- clubs
+create policy "clubs public read"
+  on public.clubs for select to authenticated using (true);
+create policy "clubs create"
+  on public.clubs for insert to authenticated with check (auth.uid() = created_by);
+
+-- club_members
+create policy "club members public read"
+  on public.club_members for select to authenticated using (true);
+create policy "self join club"
+  on public.club_members for insert to authenticated with check (user_id = auth.uid());
+create policy "self leave club"
+  on public.club_members for delete to authenticated using (user_id = auth.uid());
+
+-- fests
+create policy "fests public read"
+  on public.fests for select to authenticated using (true);
+create policy "fests owner creates"
+  on public.fests for insert to authenticated
+  with check (
+    exists (
+      select 1 from public.club_members m
+      where m.club_id = fests.club_id
+        and m.user_id = auth.uid()
+        and m.role = 'owner'
+    )
+  );
+
+-- fest_participants
+create policy "fest participants public read"
+  on public.fest_participants for select to authenticated using (true);
+create policy "self join fest"
+  on public.fest_participants for insert to authenticated with check (user_id = auth.uid());
+
+-- floor_posts
+create policy "floor posts readable"
+  on public.floor_posts for select to authenticated
+  using (
+    exists (
+      select 1 from public.club_members m
+      where m.club_id = floor_posts.club_id and m.user_id = auth.uid()
+    )
+  );
+create policy "own post insert"
+  on public.floor_posts for insert to authenticated with check (user_id = auth.uid());
+create policy "own post delete"
+  on public.floor_posts for delete to authenticated using (user_id = auth.uid());
+
+-- floor_reactions
+create policy "reactions readable"
+  on public.floor_reactions for select to authenticated using (true);
+create policy "self react"
+  on public.floor_reactions for insert to authenticated with check (user_id = auth.uid());
+create policy "self unreact"
+  on public.floor_reactions for delete to authenticated using (user_id = auth.uid());
+
+-- floor_comments
+create policy "comments readable"
+  on public.floor_comments for select to authenticated using (true);
+create policy "self comment"
+  on public.floor_comments for insert to authenticated with check (user_id = auth.uid());
+
+-- portfolios + holdings
+create policy "own portfolios"
+  on public.portfolios for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "holdings scoped to owner"
+  on public.portfolio_holdings for all to authenticated
+  using (
+    exists (select 1 from public.portfolios p where p.id = portfolio_holdings.portfolio_id and p.user_id = auth.uid())
+  )
+  with check (
+    exists (select 1 from public.portfolios p where p.id = portfolio_holdings.portfolio_id and p.user_id = auth.uid())
+  );
+
+-- paper accounts + holdings + orders
+create policy "own paper account"
+  on public.paper_accounts for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "own paper holdings"
+  on public.paper_holdings for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "own orders"
+  on public.orders for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- ============================================================================
+-- Part 3 — Auth trigger (seed profile + stats + paper account on signup)
+-- ============================================================================
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -448,17 +396,12 @@ begin
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)),
-    coalesce((new.raw_user_meta_data->>'dob')::date, current_date - interval '21 years')
+    coalesce((new.raw_user_meta_data->>'dob')::date, (current_date - interval '21 years')::date)
   )
   on conflict (id) do nothing;
 
-  insert into public.user_stats (user_id)
-  values (new.id)
-  on conflict (user_id) do nothing;
-
-  insert into public.paper_accounts (user_id)
-  values (new.id)
-  on conflict (user_id) do nothing;
+  insert into public.user_stats (user_id) values (new.id) on conflict (user_id) do nothing;
+  insert into public.paper_accounts (user_id) values (new.id) on conflict (user_id) do nothing;
 
   return new;
 end;
@@ -469,9 +412,10 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- --------------------------------------------------------------------------
--- Helpful indexes
--- --------------------------------------------------------------------------
+-- ============================================================================
+-- Part 4 — Indexes
+-- ============================================================================
+
 create index if not exists daily_results_user_date_idx on public.daily_results(user_id, date_key desc);
 create index if not exists fests_club_idx               on public.fests(club_id);
 create index if not exists floor_posts_club_idx         on public.floor_posts(club_id, created_at desc);
