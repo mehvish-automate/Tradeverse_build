@@ -356,6 +356,12 @@ function ProfileInner() {
         <Link href="/ambassadors" className="hover:text-ink-100">
           Ambassador →
         </Link>
+        <Link href="/inbox" className="hover:text-ink-100">
+          Inbox →
+        </Link>
+        <Link href="/settings" className="hover:text-ink-100">
+          Settings →
+        </Link>
       </div>
     </>
   );
