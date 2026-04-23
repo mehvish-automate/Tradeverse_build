@@ -17,7 +17,6 @@ export function Nav() {
         <nav className="hidden items-center gap-6 text-sm text-ink-300 md:flex">
           <a href="/#how" className="hover:text-ink-50">How it works</a>
           <a href="/#heroes" className="hover:text-ink-50">Game modes</a>
-          <a href="/#who" className="hover:text-ink-50">Who it&apos;s for</a>
           <a href="/#faq" className="hover:text-ink-50">FAQ</a>
         </nav>
 

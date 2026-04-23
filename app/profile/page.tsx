@@ -11,7 +11,7 @@ import { nextLesson, overallCompletion } from "@/lib/learnProgress";
 import { earnedCount } from "@/lib/badges";
 import { EVENTS, isResolved } from "@/lib/events";
 import { myAllocation } from "@/lib/eventPortfolios";
-import { getMyLeagues } from "@/lib/leagues";
+import { getMySquads } from "@/lib/squads";
 import { getProgress } from "@/lib/progress";
 import { viewQuests } from "@/lib/quests";
 import { ageFromDob, useSession } from "@/lib/session";
@@ -36,7 +36,7 @@ function ProfileInner() {
     streak: 0,
     totalXp: 0,
     plays: 0,
-    leagues: 0,
+    squads: 0,
     learnPct: 0,
     learnDone: 0,
     learnTotal: 0,
@@ -53,7 +53,7 @@ function ProfileInner() {
   useEffect(() => {
     if (!user) return;
     const p = getProgress(user.email);
-    const ls = getMyLeagues(user.email);
+    const ls = getMySquads(user.email);
     const learn = overallCompletion(user.email);
     const nxt = nextLesson(user.email);
     const nxtLesson = nxt
@@ -74,7 +74,7 @@ function ProfileInner() {
       streak: p.streak,
       totalXp: p.totalXp,
       plays: p.history.length,
-      leagues: ls.length,
+      squads: ls.length,
       learnPct: learn.pct,
       learnDone: learn.done,
       learnTotal: learn.total,
@@ -126,9 +126,9 @@ function ProfileInner() {
           hint="Earn by answering correctly + fast"
         />
         <Stat
-          label="Leagues"
-          value={`${progress.leagues}`}
-          hint={progress.leagues === 0 ? "Create or join one" : "View your leagues →"}
+          label="Squads"
+          value={`${progress.squads}`}
+          hint={progress.squads === 0 ? "Create or join one" : "View your squads →"}
         />
       </div>
 
@@ -213,7 +213,7 @@ function ProfileInner() {
           className="group rounded-2xl border border-brand-500/40 bg-brand-500/5 p-6 hover:bg-brand-500/10"
         >
           <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
-            H1 · Daily
+            Daily
           </div>
           <div className="mt-1 text-xl font-semibold">Today&apos;s chart challenge</div>
           <p className="mt-2 text-sm text-ink-300">
@@ -225,13 +225,13 @@ function ProfileInner() {
         </Link>
 
         <Link
-          href="/leagues"
+          href="/squads"
           className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
         >
           <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
-            H2 · Social
+            Social
           </div>
-          <div className="mt-1 text-xl font-semibold">Friend leagues</div>
+          <div className="mt-1 text-xl font-semibold">Friend squads</div>
           <p className="mt-2 text-sm text-ink-300">
             3–20 friends, weekly cycle, zero money.
           </p>
@@ -263,7 +263,7 @@ function ProfileInner() {
           className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
         >
           <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
-            P3 · Portfolios
+            Portfolios
           </div>
           <div className="mt-1 text-xl font-semibold">Virtual portfolios</div>
           <p className="mt-2 text-sm text-ink-300">
@@ -278,7 +278,7 @@ function ProfileInner() {
           className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
         >
           <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
-            P3 · Events
+            Events
           </div>
           <div className="mt-1 text-xl font-semibold">Event portfolios</div>
           <p className="mt-2 text-sm text-ink-300">

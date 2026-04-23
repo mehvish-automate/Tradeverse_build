@@ -7,33 +7,33 @@ import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import {
-  League,
-  createLeague,
-  getMyLeagues,
-  joinLeague,
-} from "@/lib/leagues";
+  Squad,
+  createSquad,
+  getMySquads,
+  joinSquad,
+} from "@/lib/squads";
 import { useSession } from "@/lib/session";
 
-export default function LeaguesPage() {
+export default function SquadsPage() {
   return (
     <>
       <Nav />
       <main className="mx-auto max-w-3xl px-6 py-10">
         <RequireAuth>
-          <LeaguesInner />
+          <SquadsInner />
         </RequireAuth>
       </main>
     </>
   );
 }
 
-function LeaguesInner() {
+function SquadsInner() {
   const router = useRouter();
   const { user } = useSession();
-  const [leagues, setLeagues] = useState<League[]>([]);
+  const [squads, setSquads] = useState<Squad[]>([]);
 
   useEffect(() => {
-    if (user) setLeagues(getMyLeagues(user.email));
+    if (user) setSquads(getMySquads(user.email));
   }, [user]);
 
   if (!user) return null;
@@ -41,42 +41,42 @@ function LeaguesInner() {
   return (
     <>
       <div className="mb-6">
-        <h1 className="text-3xl font-semibold">Friend Leagues</h1>
+        <h1 className="text-3xl font-semibold">Friend Squads</h1>
         <p className="mt-1 text-sm text-ink-400">
-          Race your friends on the same daily questions. 3–20 per league.
+          Race your friends on the same daily questions. 3–20 per squad.
           Weekly cycle. Zero money.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <CreateLeagueCard
+        <CreateSquadCard
           onCreated={(l) => {
-            setLeagues(getMyLeagues(user.email));
-            router.push(`/leagues/${l.id}`);
+            setSquads(getMySquads(user.email));
+            router.push(`/squads/${l.id}`);
           }}
         />
-        <JoinLeagueCard
+        <JoinSquadCard
           onJoined={(l) => {
-            setLeagues(getMyLeagues(user.email));
-            router.push(`/leagues/${l.id}`);
+            setSquads(getMySquads(user.email));
+            router.push(`/squads/${l.id}`);
           }}
         />
       </div>
 
       <h2 className="mt-10 text-sm font-medium uppercase tracking-wider text-ink-400">
-        Your leagues
+        Your squads
       </h2>
-      {leagues.length === 0 ? (
+      {squads.length === 0 ? (
         <p className="mt-3 rounded-xl border border-ink-700 bg-ink-900/40 p-6 text-sm text-ink-400">
-          You&apos;re not in any league yet. Create one above, or paste an
+          You&apos;re not in any squad yet. Create one above, or paste an
           invite code a friend sent you.
         </p>
       ) : (
         <ul className="mt-3 divide-y divide-ink-900 rounded-xl border border-ink-700 bg-ink-900/40">
-          {leagues.map((l) => (
+          {squads.map((l) => (
             <li key={l.id}>
               <Link
-                href={`/leagues/${l.id}`}
+                href={`/squads/${l.id}`}
                 className="flex items-center justify-between px-5 py-4 hover:bg-ink-900/60"
               >
                 <div>
@@ -96,7 +96,7 @@ function LeaguesInner() {
   );
 }
 
-function CreateLeagueCard({ onCreated }: { onCreated: (l: League) => void }) {
+function CreateSquadCard({ onCreated }: { onCreated: (l: Squad) => void }) {
   const { user } = useSession();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -105,12 +105,12 @@ function CreateLeagueCard({ onCreated }: { onCreated: (l: League) => void }) {
     e.preventDefault();
     if (!user) return;
     setError(null);
-    const r = createLeague({ name, creator: { email: user.email, displayName: user.displayName } });
+    const r = createSquad({ name, creator: { email: user.email, displayName: user.displayName } });
     if (!r.ok) {
       setError(r.error);
       return;
     }
-    onCreated(r.league);
+    onCreated(r.squad);
   }
 
   return (
@@ -118,10 +118,10 @@ function CreateLeagueCard({ onCreated }: { onCreated: (l: League) => void }) {
       <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
         Create
       </div>
-      <h3 className="mt-1 text-xl font-semibold">Start a new league</h3>
+      <h3 className="mt-1 text-xl font-semibold">Start a new squad</h3>
       <label className="mt-4 block">
         <span className="mb-1.5 block text-xs font-medium text-ink-300">
-          League name
+          Squad name
         </span>
         <input
           type="text"
@@ -139,13 +139,13 @@ function CreateLeagueCard({ onCreated }: { onCreated: (l: League) => void }) {
         type="submit"
         className="mt-4 w-full rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-ink-950 hover:bg-brand-300"
       >
-        Create league
+        Create squad
       </button>
     </form>
   );
 }
 
-function JoinLeagueCard({ onJoined }: { onJoined: (l: League) => void }) {
+function JoinSquadCard({ onJoined }: { onJoined: (l: Squad) => void }) {
   const { user } = useSession();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -154,7 +154,7 @@ function JoinLeagueCard({ onJoined }: { onJoined: (l: League) => void }) {
     e.preventDefault();
     if (!user) return;
     setError(null);
-    const r = joinLeague({
+    const r = joinSquad({
       code,
       user: { email: user.email, displayName: user.displayName },
     });
@@ -162,7 +162,7 @@ function JoinLeagueCard({ onJoined }: { onJoined: (l: League) => void }) {
       setError(r.error);
       return;
     }
-    onJoined(r.league);
+    onJoined(r.squad);
   }
 
   return (
@@ -193,7 +193,7 @@ function JoinLeagueCard({ onJoined }: { onJoined: (l: League) => void }) {
         type="submit"
         className="mt-4 w-full rounded-lg border border-ink-600 px-5 py-2.5 text-sm font-medium text-ink-100 hover:bg-ink-900"
       >
-        Join league
+        Join squad
       </button>
     </form>
   );

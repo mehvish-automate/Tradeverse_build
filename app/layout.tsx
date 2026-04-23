@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     template: "%s · TradeVerse",
   },
   description:
-    "TradeVerse is a pure skill-game for Indian markets. Daily chart challenges and friend leagues. No trading, no real money, no KYC.",
+    "TradeVerse is a pure skill-game for Indian markets. Daily chart challenges and friend squads. No trading, no real money, no KYC.",
   metadataBase: new URL("https://tradeverse.app"),
   keywords: [
     "TradeVerse",
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     "chart reading",
     "NSE BSE",
     "finance learning India",
-    "friend league",
+    "friend squad",
   ],
   openGraph: {
     title: "TradeVerse — Markets as a daily skill game",

@@ -3,7 +3,7 @@
 import { beatNiftyCount, resolvedParticipations } from "./eventPortfolios";
 import { TRACKS } from "./learn";
 import { completedSet, overallCompletion } from "./learnProgress";
-import { getMyLeagues } from "./leagues";
+import { getMySquads } from "./squads";
 import { listPortfolios } from "./portfolios";
 import { getProgress } from "./progress";
 
@@ -26,7 +26,7 @@ export type BadgeCtx = {
   perfectDays: number;
   lessonsDone: number;
   tracksCompleted: number;
-  leaguesCount: number;
+  squadsCount: number;
   portfoliosCount: number;
   resolvedEvents: number;
   beatNiftyEvents: number;
@@ -106,12 +106,12 @@ export const BADGES: Badge[] = [
     earned: ({ tracksCompleted }) => tracksCompleted >= 1,
   },
   {
-    id: "b-league-joined",
+    id: "b-squad-joined",
     title: "In the arena",
     icon: "🤝",
-    description: "Create or join your first league.",
+    description: "Create or join your first squad.",
     tier: "bronze",
-    earned: ({ leaguesCount }) => leaguesCount >= 1,
+    earned: ({ squadsCount }) => squadsCount >= 1,
   },
   {
     id: "b-portfolio-first",
@@ -180,7 +180,7 @@ export function buildBadgeCtx(email: string): BadgeCtx {
     perfectDays,
     lessonsDone: learn.done,
     tracksCompleted,
-    leaguesCount: getMyLeagues(email).length,
+    squadsCount: getMySquads(email).length,
     portfoliosCount,
     resolvedEvents,
     beatNiftyEvents,

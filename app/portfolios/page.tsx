@@ -62,7 +62,7 @@ function PortfoliosInner() {
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
           <div className="text-xs font-medium uppercase tracking-[0.18em] text-brand-300">
-            P3 · Portfolios
+            Portfolios
           </div>
           <h1 className="mt-1 text-3xl font-semibold">Virtual portfolios</h1>
           <p className="mt-2 max-w-2xl text-sm text-ink-400">

@@ -256,7 +256,7 @@ function Results({
         </Link>
         <ShareButton user={user} result={result} />
         <Link
-          href="/leagues"
+          href="/squads"
           className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-brand-300"
         >
           Compare with friends →
@@ -325,14 +325,14 @@ function RivalCard({ event }: { event: RivalEvent }) {
   if (event.kind === "passed") {
     icon = "📈";
     title = `You just passed @${event.rival}`;
-    body = `In ${event.league}. Keep the pressure on.`;
+    body = `In ${event.squad}. Keep the pressure on.`;
   } else if (event.kind === "about-to-be-passed") {
     icon = "⚠️";
     title = `@${event.rival} is ${event.gap} XP behind`;
-    body = `In ${event.league}. One good run and they're ahead.`;
+    body = `In ${event.squad}. One good run and they're ahead.`;
   } else if (event.kind === "lead") {
     icon = "👑";
-    title = `You're #1 in ${event.league}`;
+    title = `You're #1 in ${event.squad}`;
     body = `${event.total - 1} players trying to catch you.`;
   }
 

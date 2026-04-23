@@ -25,16 +25,16 @@ export function HeroOfferings() {
 
         <OfferingCard
           badge="H2"
-          title="Friend Leagues"
+          title="Friend Squads"
           tagline="3–20 friends. Same questions. Weekly leaderboard. Zero money."
           bullets={[
-            "WhatsApp-native invites — 2 taps from group chat to league",
+            "WhatsApp-native invites — 2 taps from group chat to squad",
             "Ranked by accuracy and speed, not capital",
             "Weekly cycle with a clean reset — no compounding advantage",
             "India-flavored social loop, zero regulatory exposure",
           ]}
           why="The virality engine."
-          preview={<LeaguePreview />}
+          preview={<SquadPreview />}
         />
       </div>
     </Section>
@@ -132,7 +132,7 @@ function ChartPreview() {
   );
 }
 
-function LeaguePreview() {
+function SquadPreview() {
   const rows = [
     { name: "you", score: 4820, delta: "+320", me: true },
     { name: "ananya_b", score: 4605, delta: "+280" },

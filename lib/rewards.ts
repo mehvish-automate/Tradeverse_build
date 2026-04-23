@@ -3,18 +3,18 @@
 // Variable-ratio rewards layered on top of the deterministic base XP.
 // Following the Hook model: Tribe (rival), Hunt (mystery multiplier),
 // Self (streak freeze when you miss a day). All rewards stay in the
-// allowed invariant set: XP, badges, league position, streak freezes.
+// allowed invariant set: XP, badges, squad position, streak freezes.
 // Never cash. Never prediction-outcome tied.
 
-import { currentWeekStart, getMyLeagues, weeklyLeaderboard } from "./leagues";
+import { currentWeekStart, getMySquads, weeklyLeaderboard } from "./squads";
 
 const FREEZE_KEY = (email: string) => `tv.streakfreezes.${email}`;
 const REWARD_LOG_KEY = (email: string) => `tv.rewardlog.${email}`;
 
 export type RivalEvent =
-  | { kind: "passed"; rival: string; league: string }
-  | { kind: "about-to-be-passed"; rival: string; league: string; gap: number }
-  | { kind: "lead"; league: string; rank: number; total: number };
+  | { kind: "passed"; rival: string; squad: string }
+  | { kind: "about-to-be-passed"; rival: string; squad: string; gap: number }
+  | { kind: "lead"; squad: string; rank: number; total: number };
 
 export type MysteryReward = {
   label: string;
@@ -62,26 +62,26 @@ export function rollMysteryReward(email: string, dateKey: string): MysteryReward
 
 /**
  * Find the most narrative-worthy rival event across the player's
- * leagues, for showing on the results screen.
+ * squads, for showing on the results screen.
  *
  * - "passed": you overtook someone this week
  * - "about-to-be-passed": someone is ≤ 200 XP behind you
- * - "lead": you're #1 in at least one league
+ * - "lead": you're #1 in at least one squad
  *
- * Falls back to null when the player is in no leagues.
+ * Falls back to null when the player is in no squads.
  */
 export function computeRivalEvent(
   email: string,
   displayName: string,
 ): RivalEvent | null {
-  const mine = getMyLeagues(email);
+  const mine = getMySquads(email);
   if (mine.length === 0) return null;
 
   let best: RivalEvent | null = null;
   let bestScore = -Infinity;
 
-  for (const league of mine) {
-    const rows = weeklyLeaderboard(league, email);
+  for (const squad of mine) {
+    const rows = weeklyLeaderboard(squad, email);
     const myIdx = rows.findIndex((r) => r.isYou);
     if (myIdx < 0) continue;
 
@@ -89,7 +89,7 @@ export function computeRivalEvent(
     if (myIdx === 0) {
       const candidate: RivalEvent = {
         kind: "lead",
-        league: league.name,
+        squad: squad.name,
         rank: 1,
         total: rows.length,
       };
@@ -106,7 +106,7 @@ export function computeRivalEvent(
       const candidate: RivalEvent = {
         kind: "passed",
         rival: below.displayName,
-        league: league.name,
+        squad: squad.name,
       };
       const score = 3; // richest narrative; pick this when possible
       if (score > bestScore) {
@@ -123,7 +123,7 @@ export function computeRivalEvent(
         const candidate: RivalEvent = {
           kind: "about-to-be-passed",
           rival: above.displayName,
-          league: league.name,
+          squad: squad.name,
           gap,
         };
         const score = 2.5;

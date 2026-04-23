@@ -2,34 +2,34 @@
 
 import { getProgress } from "./progress";
 
-export type LeagueMember = {
+export type SquadMember = {
   email: string;
   displayName: string;
   joinedAt: number;
 };
 
-export type League = {
+export type Squad = {
   id: string; // invite/share code, short human-friendly
   name: string;
   createdBy: string; // email
   createdAt: number;
-  members: LeagueMember[];
+  members: SquadMember[];
 };
 
-const LEAGUES_KEY = "tv.leagues";
+const SQUADS_KEY = "tv.squads";
 const MEMBERSHIP_KEY = (email: string) => `tv.memberships.${email}`;
 
-function readLeagues(): League[] {
+function readSquads(): Squad[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(LEAGUES_KEY) || "[]") as League[];
+    return JSON.parse(localStorage.getItem(SQUADS_KEY) || "[]") as Squad[];
   } catch {
     return [];
   }
 }
 
-function writeLeagues(ls: League[]) {
-  localStorage.setItem(LEAGUES_KEY, JSON.stringify(ls));
+function writeSquads(ls: Squad[]) {
+  localStorage.setItem(SQUADS_KEY, JSON.stringify(ls));
 }
 
 function readMemberships(email: string): string[] {
@@ -54,19 +54,19 @@ function genCode(): string {
   return out;
 }
 
-export function createLeague(input: {
+export function createSquad(input: {
   name: string;
   creator: { email: string; displayName: string };
-}): { ok: true; league: League } | { ok: false; error: string } {
+}): { ok: true; squad: Squad } | { ok: false; error: string } {
   const name = input.name.trim();
-  if (name.length < 3) return { ok: false, error: "League name too short." };
-  if (name.length > 40) return { ok: false, error: "League name too long." };
+  if (name.length < 3) return { ok: false, error: "Squad name too short." };
+  if (name.length > 40) return { ok: false, error: "Squad name too long." };
 
-  const all = readLeagues();
+  const all = readSquads();
   let id = genCode();
   while (all.some((l) => l.id === id)) id = genCode();
 
-  const league: League = {
+  const squad: Squad = {
     id,
     name,
     createdBy: input.creator.email,
@@ -79,49 +79,49 @@ export function createLeague(input: {
       },
     ],
   };
-  all.push(league);
-  writeLeagues(all);
+  all.push(squad);
+  writeSquads(all);
 
   const mem = readMemberships(input.creator.email);
-  if (!mem.includes(league.id)) mem.push(league.id);
+  if (!mem.includes(squad.id)) mem.push(squad.id);
   writeMemberships(input.creator.email, mem);
 
-  return { ok: true, league };
+  return { ok: true, squad };
 }
 
-export function joinLeague(input: {
+export function joinSquad(input: {
   code: string;
   user: { email: string; displayName: string };
-}): { ok: true; league: League } | { ok: false; error: string } {
+}): { ok: true; squad: Squad } | { ok: false; error: string } {
   const code = input.code.trim().toUpperCase();
-  const all = readLeagues();
-  const league = all.find((l) => l.id === code);
-  if (!league) return { ok: false, error: "No league with that code." };
-  if (league.members.length >= 20)
-    return { ok: false, error: "League is full (20 members)." };
+  const all = readSquads();
+  const squad = all.find((l) => l.id === code);
+  if (!squad) return { ok: false, error: "No squad with that code." };
+  if (squad.members.length >= 20)
+    return { ok: false, error: "Squad is full (20 members)." };
 
-  if (!league.members.some((m) => m.email === input.user.email)) {
-    league.members.push({
+  if (!squad.members.some((m) => m.email === input.user.email)) {
+    squad.members.push({
       email: input.user.email,
       displayName: input.user.displayName,
       joinedAt: Date.now(),
     });
-    writeLeagues(all);
+    writeSquads(all);
 
     const mem = readMemberships(input.user.email);
-    if (!mem.includes(league.id)) mem.push(league.id);
+    if (!mem.includes(squad.id)) mem.push(squad.id);
     writeMemberships(input.user.email, mem);
   }
-  return { ok: true, league };
+  return { ok: true, squad };
 }
 
-export function getLeague(id: string): League | null {
-  return readLeagues().find((l) => l.id === id.toUpperCase()) ?? null;
+export function getSquad(id: string): Squad | null {
+  return readSquads().find((l) => l.id === id.toUpperCase()) ?? null;
 }
 
-export function getMyLeagues(email: string): League[] {
+export function getMySquads(email: string): Squad[] {
   const ids = new Set(readMemberships(email));
-  return readLeagues().filter(
+  return readSquads().filter(
     (l) => ids.has(l.id) || l.members.some((m) => m.email === email),
   );
 }
@@ -146,7 +146,7 @@ export type LeaderboardRow = {
 };
 
 /**
- * Weekly leaderboard for a league.
+ * Weekly leaderboard for a squad.
  *
  * V1 caveat: each browser only holds its own user's progress in
  * localStorage, so the "live" numbers you see here mix your real score
@@ -154,13 +154,13 @@ export type LeaderboardRow = {
  * this with server-backed scores.
  */
 export function weeklyLeaderboard(
-  league: League,
+  squad: Squad,
   viewerEmail: string,
 ): LeaderboardRow[] {
   const weekStart = currentWeekStart();
   const weekStartMs = new Date(weekStart).getTime();
 
-  return league.members
+  return squad.members
     .map((m) => {
       if (m.email === viewerEmail) {
         const p = getProgress(m.email);
@@ -198,7 +198,7 @@ export function weeklyLeaderboard(
     .sort((a, b) => b.xp - a.xp);
 }
 
-export function whatsappInviteUrl(league: League): string {
-  const text = `Join my TradeVerse league "${league.name}". Code: ${league.id} — https://tradeverse.app/leagues/${league.id}`;
+export function whatsappInviteUrl(squad: Squad): string {
+  const text = `Join my TradeVerse squad "${squad.name}". Code: ${squad.id} — https://tradeverse.app/squads/${squad.id}`;
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
