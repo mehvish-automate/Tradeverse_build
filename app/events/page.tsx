@@ -41,9 +41,9 @@ function EventsInner() {
     <>
       <div className="mb-8">
         <div className="text-xs font-medium uppercase tracking-[0.18em] text-brand-300">
-          Events
+          Market Events
         </div>
-        <h1 className="mt-1 text-3xl font-semibold">Event portfolios</h1>
+        <h1 className="mt-1 text-3xl font-semibold">Analysis Challenge</h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-400">
           Curated scenarios. Read the thesis, pick a sector allocation, come
           back at resolution to see how you did vs NIFTY. Zero money —

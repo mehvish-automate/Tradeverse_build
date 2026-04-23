@@ -160,11 +160,11 @@ function ProfileInner() {
             <span className="text-2xl">🗞️</span>
             <div>
               <div className="text-xs font-medium uppercase tracking-wider text-amber-300">
-                Event portfolio
+                Market Events
               </div>
               <div className="text-sm text-ink-100">
-                {progress.eventClaimable} resolved event
-                {progress.eventClaimable === 1 ? "" : "s"} — claim your reward
+                {progress.eventClaimable} Analysis Challenge
+                {progress.eventClaimable === 1 ? "" : "s"} resolved — claim your reward
               </div>
             </div>
           </div>
@@ -297,9 +297,9 @@ function ProfileInner() {
           className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
         >
           <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
-            Events
+            Market Events
           </div>
-          <div className="mt-1 text-xl font-semibold">Event portfolios</div>
+          <div className="mt-1 text-xl font-semibold">Analysis Challenge</div>
           <p className="mt-2 text-sm text-ink-300">
             Budget week, IT earnings, festive auto. Pick an allocation,
             resolve and see how you ranked.

@@ -75,7 +75,7 @@ function PortfoliosInner() {
           href="/events"
           className="shrink-0 rounded-lg border border-ink-700 bg-ink-900/60 px-4 py-2.5 text-sm text-ink-100 hover:border-ink-500"
         >
-          Event portfolios →
+          Market Events →
         </Link>
       </div>
 

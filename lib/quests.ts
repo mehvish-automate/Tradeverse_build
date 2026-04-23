@@ -177,7 +177,7 @@ export const QUESTS: Quest[] = [
     id: "m-beat-nifty",
     window: "monthly",
     title: "Beat NIFTY on an event",
-    description: "Resolve one event portfolio with positive alpha.",
+    description: "Resolve one Market Events challenge with positive alpha.",
     rewardXp: 500,
     progress: ({ beatNiftyEvents }) => ({
       done: Math.min(beatNiftyEvents, 1),
