@@ -121,6 +121,21 @@ function FestInner() {
                 Official
               </span>
             )}
+            {fest.eventType && (
+              <span className="rounded-md bg-ink-900 px-1.5 py-0.5 font-semibold uppercase tracking-wider text-ink-300">
+                {fest.eventType}
+              </span>
+            )}
+            {fest.difficulty && (
+              <span className="rounded-md bg-ink-900 px-1.5 py-0.5 font-semibold uppercase tracking-wider text-ink-300">
+                {fest.difficulty}
+              </span>
+            )}
+            {fest.source === "custom" && (
+              <span className="rounded-md bg-amber-500/20 px-1.5 py-0.5 font-semibold uppercase tracking-wider text-amber-300">
+                custom Qs
+              </span>
+            )}
             <span className="text-ink-500">
               {fest.startDate} → {fest.endDate}
             </span>

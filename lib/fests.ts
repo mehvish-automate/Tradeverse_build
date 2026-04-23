@@ -9,6 +9,28 @@
 import { getClub, getInstitute } from "./clubs";
 import { getProgress } from "./progress";
 
+export type FestEventType =
+  | "paper-trading"
+  | "prediction"
+  | "quiz"
+  | "case-study"
+  | "hackathon"
+  | "markets-news"
+  | "crossword"
+  | "mixed";
+
+export type FestDifficulty = "beginner" | "intermediate" | "advanced";
+
+export type FestSource = "system" | "custom";
+
+export type FestQuestion = {
+  id: string;
+  prompt: string;
+  options: string[]; // 2–5 options
+  answer: number; // index into options
+  explain?: string;
+};
+
 export type Fest = {
   id: string; // 6-char invite code (A–Z, 2–9)
   clubId: string;
@@ -19,7 +41,28 @@ export type Fest = {
   createdBy: string;
   createdAt: number;
   participants: { email: string; displayName: string; joinedAt: number }[];
+  eventType?: FestEventType;
+  difficulty?: FestDifficulty;
+  source?: FestSource;
+  questions?: FestQuestion[];
 };
+
+export const FEST_EVENT_TYPES: { id: FestEventType; label: string; blurb: string }[] = [
+  { id: "paper-trading", label: "Paper trading", blurb: "Who finishes the window with the highest paper P&L." },
+  { id: "prediction",    label: "Prediction",    blurb: "Breakouts, sector moves, earnings direction." },
+  { id: "quiz",          label: "Quiz",          blurb: "Finance knowledge MCQs — speed + accuracy." },
+  { id: "case-study",    label: "Case study",    blurb: "Long-form scenario, pick an answer or write one." },
+  { id: "hackathon",     label: "Hackathon",     blurb: "Multi-day open-ended challenge; host grades entries." },
+  { id: "markets-news",  label: "Markets news",  blurb: "News-to-market-move matching." },
+  { id: "crossword",     label: "Crossword",     blurb: "Finance-term crossword run." },
+  { id: "mixed",         label: "Mixed",         blurb: "A combination across the formats above." },
+];
+
+export const FEST_DIFFICULTIES: { id: FestDifficulty; label: string }[] = [
+  { id: "beginner",     label: "Beginner" },
+  { id: "intermediate", label: "Intermediate" },
+  { id: "advanced",     label: "Advanced" },
+];
 
 const FESTS_KEY = "tv.fests";
 const MY_FESTS_KEY = (email: string) => `tv.myfests.${email}`;
@@ -82,6 +125,10 @@ export function createFest(input: {
   startDate: string;
   endDate: string;
   creator: { email: string; displayName: string };
+  eventType?: FestEventType;
+  difficulty?: FestDifficulty;
+  source?: FestSource;
+  questions?: FestQuestion[];
 }): { ok: true; fest: Fest } | { ok: false; error: string } {
   const club = getClub(input.clubId);
   if (!club) return { ok: false, error: "Club not found." };
@@ -107,6 +154,24 @@ export function createFest(input: {
   let id = genCode();
   while (all.some((f) => f.id === id)) id = genCode();
 
+  // Validate custom questions when source = custom.
+  const source: FestSource = input.source ?? "system";
+  let questions: FestQuestion[] | undefined;
+  if (source === "custom") {
+    const qs = input.questions ?? [];
+    if (qs.length === 0)
+      return { ok: false, error: "Add at least one custom question." };
+    for (const q of qs) {
+      if (!q.prompt?.trim())
+        return { ok: false, error: "A custom question has an empty prompt." };
+      if (!Array.isArray(q.options) || q.options.length < 2)
+        return { ok: false, error: "Each question needs at least 2 options." };
+      if (typeof q.answer !== "number" || q.answer < 0 || q.answer >= q.options.length)
+        return { ok: false, error: "Each question needs a valid correct answer." };
+    }
+    questions = qs;
+  }
+
   const fest: Fest = {
     id,
     clubId: input.clubId,
@@ -123,6 +188,10 @@ export function createFest(input: {
         joinedAt: Date.now(),
       },
     ],
+    eventType: input.eventType ?? "paper-trading",
+    difficulty: input.difficulty ?? "intermediate",
+    source,
+    questions,
   };
   all.push(fest);
   writeFests(all);
