@@ -10,6 +10,7 @@ import { TRACKS } from "@/lib/learn";
 import { nextLesson, overallCompletion } from "@/lib/learnProgress";
 import { getMyLeagues } from "@/lib/leagues";
 import { getProgress } from "@/lib/progress";
+import { viewQuests } from "@/lib/quests";
 import { ageFromDob, useSession } from "@/lib/session";
 
 export default function ProfilePage() {
@@ -39,6 +40,8 @@ function ProfileInner() {
     nextLessonId: null as string | null,
     nextLessonTitle: "",
     nextTrackTitle: "",
+    questsClaimable: 0,
+    questsClaimableXp: 0,
   });
 
   useEffect(() => {
@@ -52,6 +55,8 @@ function ProfileInner() {
           (l) => l.id === nxt.lessonId,
         )
       : null;
+    const qs = viewQuests(user.email);
+    const claimable = qs.filter((q) => q.canClaim);
     setProgress({
       streak: p.streak,
       totalXp: p.totalXp,
@@ -63,6 +68,8 @@ function ProfileInner() {
       nextLessonId: nxt?.lessonId ?? null,
       nextLessonTitle: nxtLesson?.title ?? "",
       nextTrackTitle: nxt?.track.title ?? "",
+      questsClaimable: claimable.length,
+      questsClaimableXp: claimable.reduce((s, q) => s + q.quest.rewardXp, 0),
     });
   }, [user]);
 
@@ -109,10 +116,35 @@ function ProfileInner() {
         />
       </div>
 
+      {progress.questsClaimable > 0 && (
+        <Link
+          href="/quests"
+          className="group mt-10 flex items-center justify-between rounded-2xl border border-amber-500/50 bg-gradient-to-br from-amber-500/10 to-transparent p-5 hover:border-amber-500"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🎁</span>
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-amber-300">
+                Quests
+              </div>
+              <div className="text-sm text-ink-100">
+                {progress.questsClaimable} reward
+                {progress.questsClaimable === 1 ? "" : "s"} ready ·{" "}
+                {progress.questsClaimableXp} XP to claim
+              </div>
+            </div>
+          </div>
+          <span className="text-sm text-amber-300 group-hover:underline">Claim →</span>
+        </Link>
+      )}
+
       {progress.nextLessonId && (
         <Link
           href={`/learn/${progress.nextLessonId}`}
-          className="group mt-10 block rounded-2xl border border-brand-500/40 bg-gradient-to-br from-brand-500/10 to-transparent p-6 hover:border-brand-500"
+          className={
+            "group block rounded-2xl border border-brand-500/40 bg-gradient-to-br from-brand-500/10 to-transparent p-6 hover:border-brand-500 " +
+            (progress.questsClaimable > 0 ? "mt-4" : "mt-10")
+          }
         >
           <div className="flex items-center justify-between">
             <div>
@@ -185,12 +217,12 @@ function ProfileInner() {
         </Link>
       </div>
 
-      <div className="mt-10">
-        <Link
-          href="/history"
-          className="text-sm text-ink-400 hover:text-ink-100"
-        >
-          View history →
+      <div className="mt-10 flex gap-4 text-sm text-ink-400">
+        <Link href="/quests" className="hover:text-ink-100">
+          Quests →
+        </Link>
+        <Link href="/history" className="hover:text-ink-100">
+          History →
         </Link>
       </div>
     </>
