@@ -20,6 +20,8 @@ const TRACK_TONE: Record<Track["accent"], string> = {
   patterns: "from-brand-500/10 border-brand-500/40 text-brand-300",
   levels: "from-amber-500/10 border-amber-500/40 text-amber-300",
   fundamentals: "from-violet-500/10 border-violet-500/40 text-violet-300",
+  indicators: "from-cyan-500/10 border-cyan-500/40 text-cyan-300",
+  matching: "from-pink-500/10 border-pink-500/40 text-pink-300",
 };
 
 export default function LearnPage() {

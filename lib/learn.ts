@@ -19,7 +19,7 @@ export type Track = {
   id: string;
   title: string;
   blurb: string;
-  accent: "basics" | "patterns" | "levels" | "fundamentals";
+  accent: "basics" | "patterns" | "levels" | "fundamentals" | "indicators" | "matching";
   lessons: Lesson[];
 };
 
@@ -233,6 +233,110 @@ export const TRACKS: Track[] = [
             answer: 1,
             explain:
               "Former support often flips to resistance once broken. Lots of trapped longs are waiting to get out flat at that level.",
+          },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: "indicators",
+    title: "Indicators",
+    blurb: "When raw price isn't enough. RSI, the most-used oscillator.",
+    accent: "indicators",
+    lessons: [
+      {
+        id: "i-rsi",
+        title: "RSI, from scratch",
+        minutes: 3,
+        summary: "Overbought, oversold, and why '50' is boring on purpose.",
+        explainer: [
+          "RSI (Relative Strength Index) is a 0–100 score that tries to measure how stretched the recent move has been, relative to itself.",
+          "Rule of thumb: RSI > 70 = overbought (move is stretched, cool-off more likely). RSI < 30 = oversold (drop is stretched, bounce more likely). 30–70 is the normal middle.",
+          "RSI is a context clue, not a signal. An overbought stock in a strong uptrend can stay overbought for weeks. Pair it with price action before you act.",
+        ],
+        practice: [
+          {
+            id: "i1-q1",
+            kind: "indicator",
+            indicator: "RSI",
+            prompt: "Which stock here looks most overbought?",
+            rows: [
+              { symbol: "RELIANCE", value: 58 },
+              { symbol: "TCS", value: 44 },
+              { symbol: "ADANIENT", value: 76 },
+              { symbol: "HDFCBANK", value: 61 },
+            ],
+            answer: 2,
+            explain:
+              "ADANIENT at 76 is the only reading above 70. Remember — overbought doesn't mean short, it means context.",
+          },
+          {
+            id: "i1-q2",
+            kind: "indicator",
+            indicator: "RSI",
+            prompt: "Which reading here is the textbook neutral mid-range?",
+            rows: [
+              { symbol: "INFY", value: 50 },
+              { symbol: "WIPRO", value: 24 },
+              { symbol: "SBIN", value: 82 },
+              { symbol: "MARUTI", value: 68 },
+            ],
+            answer: 0,
+            explain:
+              "50 is the RSI midpoint. WIPRO is oversold; SBIN is strongly overbought; MARUTI is inside the normal range but leaning strong.",
+          },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: "matching",
+    title: "Chart matching",
+    blurb: "See it in the wild. Recognise the shape from 4 candidates.",
+    accent: "matching",
+    lessons: [
+      {
+        id: "m-shapes",
+        title: "Shapes in the wild",
+        minutes: 3,
+        summary: "Four small charts, one right answer. Pattern-recognition reps.",
+        explainer: [
+          "Traders don't get a labelled chart in the real world. They get four ambiguous candidates and have to pick the one that fits the setup.",
+          "This lesson is all reps — look at the 4 thumbnails, isolate the key structure (pole, base, bottom, wedge), and pick.",
+        ],
+        practice: [
+          {
+            id: "m1-q1",
+            kind: "match",
+            prompt: "Which of these is a clean double bottom?",
+            charts: [
+              { label: "A", points: [40, 36, 32, 30, 32, 34, 36, 38, 40, 42, 44, 46] },
+              { label: "B", points: [40, 32, 24, 20, 24, 30, 28, 22, 20, 24, 32, 40] },
+              { label: "C", points: [20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64] },
+              { label: "D", points: [40, 38, 36, 38, 42, 44, 42, 44, 46, 44, 46, 48] },
+            ],
+            options: ["Chart A", "Chart B", "Chart C", "Chart D"],
+            answer: 1,
+            explain:
+              "B prints two distinct lows at ~20 with an interim rally to ~30 — the defining shape.",
+          },
+          {
+            id: "m1-q2",
+            kind: "match",
+            prompt:
+              "Which is the morning-rally-fade (strong up, then gives it all back)?",
+            charts: [
+              { label: "A", points: [20, 24, 30, 36, 42, 44, 42, 38, 32, 28, 22, 18] },
+              { label: "B", points: [20, 18, 16, 14, 14, 16, 20, 24, 28, 32, 36, 40] },
+              { label: "C", points: [30, 30, 31, 30, 30, 31, 30, 30, 31, 30, 29, 30] },
+              { label: "D", points: [20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 44] },
+            ],
+            options: ["Chart A", "Chart B", "Chart C", "Chart D"],
+            answer: 0,
+            explain:
+              "A rallies hard into the midday high and gives it all back by close — that's a morning-rally-fade profile.",
           },
         ],
       },

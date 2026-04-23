@@ -4,8 +4,8 @@ import Link from "next/link";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { ChartSvg } from "@/components/ChartSvg";
 import { Nav } from "@/components/Nav";
+import { QuestionView } from "@/components/QuestionView";
 import { RequireAuth } from "@/components/RequireAuth";
 import { findLesson } from "@/lib/learn";
 import {
@@ -14,7 +14,6 @@ import {
   markComplete,
   nextLesson,
 } from "@/lib/learnProgress";
-import { Question } from "@/lib/questions";
 import { useSession } from "@/lib/session";
 
 export default function LessonPage() {
@@ -117,11 +116,7 @@ function LessonInner() {
 
       {phase === "practice" && (
         <section className="mt-8 rounded-2xl border border-ink-700 bg-ink-900/40 p-6">
-          <PracticeQuestion
-            q={q}
-            chosen={chosen}
-            onPick={pick}
-          />
+          <QuestionView q={q} chosenIdx={chosen} onPick={pick} />
           {chosen != null && (
             <div className="mt-5 rounded-lg border border-ink-700 bg-ink-950/50 p-4 text-sm">
               <div
@@ -184,61 +179,3 @@ function LessonInner() {
   );
 }
 
-function PracticeQuestion({
-  q,
-  chosen,
-  onPick,
-}: {
-  q: Question;
-  chosen: number | null;
-  onPick: (i: number) => void;
-}) {
-  const options = "options" in q ? q.options : [];
-  return (
-    <>
-      <div className="flex flex-wrap items-center gap-2 text-xs text-ink-400">
-        <span className="rounded-md bg-brand-500/10 px-2 py-0.5 font-medium text-brand-300">
-          {q.kind}
-        </span>
-        {"symbol" in q && <span>{q.symbol}</span>}
-        {"interval" in q && <span>· {q.interval}</span>}
-      </div>
-      <h2 className="mt-3 text-lg font-semibold md:text-xl">{q.prompt}</h2>
-      {(q.kind === "pattern" || q.kind === "level") && (
-        <div className="mt-4 rounded-lg border border-ink-700/70 bg-ink-950 p-3">
-          <ChartSvg
-            points={q.series.points}
-            levels={q.kind === "level" ? q.levels : undefined}
-          />
-        </div>
-      )}
-      <div className="mt-5 grid grid-cols-1 gap-2 md:grid-cols-2">
-        {options.map((label, i) => {
-          const picked = chosen === i;
-          const isCorrect = chosen != null && i === q.answer;
-          const isWrongPick = chosen != null && picked && i !== q.answer;
-          const locked = chosen != null;
-          return (
-            <button
-              key={label + i}
-              onClick={() => onPick(i)}
-              disabled={locked}
-              className={
-                "rounded-lg border px-4 py-3 text-left text-sm transition " +
-                (isCorrect
-                  ? "border-brand-500 bg-brand-500/10 text-ink-50"
-                  : isWrongPick
-                    ? "border-red-500/70 bg-red-500/10 text-ink-50"
-                    : picked
-                      ? "border-ink-500 bg-ink-900 text-ink-50"
-                      : "border-ink-700 text-ink-200 hover:border-ink-500")
-              }
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-    </>
-  );
-}
