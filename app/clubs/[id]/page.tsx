@@ -184,19 +184,29 @@ function ClubInner() {
         </Link>
 
         <Link
-          href="/trade-floors"
+          href={`/clubs/${club.id}/sessions`}
           className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-5 hover:border-ink-500"
         >
           <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
-            Trade floors
+            Live sessions
           </div>
-          <div className="mt-1 text-lg font-semibold">Friend groups</div>
+          <div className="mt-1 text-lg font-semibold">Walkthroughs & AMAs</div>
           <p className="mt-2 text-sm text-ink-300">
-            Smaller 3–20 friend groups for weekly competition.
+            Scheduled club meet-ups — walkthroughs, market-open watches,
+            AMAs. RSVPs + notes, no streaming from us.
           </p>
           <div className="mt-3 text-sm text-ink-300 group-hover:text-ink-50">
             Open →
           </div>
+        </Link>
+      </div>
+
+      <div className="mt-3">
+        <Link
+          href="/trade-floors"
+          className="group inline-flex items-center gap-2 text-sm text-ink-400 hover:text-ink-100"
+        >
+          Smaller friend groups? See trade floors →
         </Link>
       </div>
 
