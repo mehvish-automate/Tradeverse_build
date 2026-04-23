@@ -15,6 +15,7 @@ import { viewQuests } from "./quests";
 import { EVENTS, isResolved as eventResolved } from "./events";
 import { myAllocation } from "./eventPortfolios";
 import { mySessions, sessionStatus } from "./sessions";
+import { currentRsiAlerts } from "./watchlist";
 
 export type NotificationKind =
   | "reward"
@@ -25,7 +26,8 @@ export type NotificationKind =
   | "fest-starting"
   | "fest-ending"
   | "session-starting"
-  | "session-live";
+  | "session-live"
+  | "rsi-alert";
 
 export type Notification = {
   id: string;
@@ -189,6 +191,19 @@ export function buildFeed(email: string, now = new Date()): Notification[] {
         emoji: "⏰",
       });
     }
+  }
+
+  // Watchlist RSI alerts.
+  for (const a of currentRsiAlerts(email, now)) {
+    out.push({
+      id: `rsi:${a.symbol}:${a.zone}`,
+      kind: "rsi-alert",
+      title: `${a.symbol} is ${a.zone}`,
+      body: `RSI sitting at ${a.rsi.toFixed(0)} — the momentum is stretched ${a.zone === "overbought" ? "up" : "down"}. Context, not a tip.`,
+      ts: nowMs,
+      href: "/watchlist",
+      emoji: a.zone === "overbought" ? "🔥" : "❄️",
+    });
   }
 
   // Deduplicate by id, newest first.

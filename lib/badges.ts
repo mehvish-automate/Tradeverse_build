@@ -11,6 +11,7 @@ import { getMyTradeFloors } from "./tradeFloors";
 import { listPortfolios } from "./portfolios";
 import { getProgress } from "./progress";
 import { hostedSessionsCount } from "./sessions";
+import { watchlistCount } from "./watchlist";
 
 export type Badge = {
   id: string;
@@ -41,6 +42,7 @@ export type BadgeCtx = {
   isAmbassador: boolean;
   postsAuthored: number;
   sessionsHosted: number;
+  watchlistSize: number;
 };
 
 export const BADGES: Badge[] = [
@@ -196,6 +198,14 @@ export const BADGES: Badge[] = [
     tier: "silver",
     earned: ({ sessionsHosted }) => sessionsHosted >= 1,
   },
+  {
+    id: "b-watchlist-5",
+    title: "On the watch",
+    icon: "👁️",
+    description: "Track five stocks on your watchlist.",
+    tier: "bronze",
+    earned: ({ watchlistSize }) => watchlistSize >= 5,
+  },
 ];
 
 export function buildBadgeCtx(email: string): BadgeCtx {
@@ -234,6 +244,7 @@ export function buildBadgeCtx(email: string): BadgeCtx {
   const festsWon = festsWonCount(email);
   const postsAuthored = postsAuthoredCount(email);
   const sessionsHosted = hostedSessionsCount(email);
+  const watchlistSize = watchlistCount(email);
 
   return {
     email,
@@ -254,6 +265,7 @@ export function buildBadgeCtx(email: string): BadgeCtx {
     isAmbassador: isAmbassador(email),
     postsAuthored,
     sessionsHosted,
+    watchlistSize,
   };
 }
 

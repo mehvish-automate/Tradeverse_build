@@ -12,6 +12,7 @@ import { DailyResult, getProgress } from "./progress";
 import { currentWeekStart } from "./tradeFloors";
 import { todayKey } from "./questions";
 import { hostedSessionsCount, mySessions } from "./sessions";
+import { watchlistCount } from "./watchlist";
 
 export type QuestWindow = "daily" | "weekly" | "monthly";
 
@@ -41,6 +42,7 @@ export type ProgressCtx = {
   postsAuthored: number;
   sessionsHosted: number;
   sessionsRsvp: number;
+  watchlistSize: number;
 };
 
 const CLAIM_KEY = (email: string) => `tv.quests.claims.${email}`;
@@ -248,6 +250,17 @@ export const QUESTS: Quest[] = [
       target: 1,
     }),
   },
+  {
+    id: "w-watch",
+    window: "weekly",
+    title: "Watchlist 3 stocks",
+    description: "Pick three names to follow this week.",
+    rewardXp: 100,
+    progress: ({ watchlistSize }) => ({
+      done: Math.min(watchlistSize, 3),
+      target: 3,
+    }),
+  },
 ];
 
 function runsForWindow(
@@ -289,6 +302,7 @@ export function buildContext(email: string, now = new Date()): ProgressCtx {
     postsAuthored: postsAuthoredCount(email),
     sessionsHosted: hostedSessionsCount(email),
     sessionsRsvp: mySessions(email).length,
+    watchlistSize: watchlistCount(email),
   };
 }
 

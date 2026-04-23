@@ -306,6 +306,21 @@ function ProfileInner() {
           </p>
           <div className="mt-4 text-sm text-ink-300 group-hover:text-ink-50">Open →</div>
         </Link>
+
+        <Link
+          href="/watchlist"
+          className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
+        >
+          <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
+            Watchlist
+          </div>
+          <div className="mt-1 text-xl font-semibold">Stocks you follow</div>
+          <p className="mt-2 text-sm text-ink-300">
+            Pick names to track. RSI alerts land in your inbox when they
+            cross 70 or 30.
+          </p>
+          <div className="mt-4 text-sm text-ink-300 group-hover:text-ink-50">Open →</div>
+        </Link>
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
