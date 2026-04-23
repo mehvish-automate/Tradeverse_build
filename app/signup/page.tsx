@@ -1,14 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 
 import { Nav } from "@/components/Nav";
+import { applyReferral, handleForCode, registerOwnCode } from "@/lib/referral";
 import { signUp } from "@/lib/session";
 
 export default function SignupPage() {
+  return (
+    <>
+      <Nav />
+      <main className="mx-auto max-w-md px-6 py-16">
+        <Suspense fallback={null}>
+          <SignupForm />
+        </Suspense>
+      </main>
+    </>
+  );
+}
+
+function SignupForm() {
   const router = useRouter();
+  const search = useSearchParams();
+  const ref = (search.get("ref") || "").toUpperCase();
+  const inviter = ref ? handleForCode(ref) : null;
+
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [dob, setDob] = useState("");
@@ -33,19 +51,36 @@ export default function SignupPage() {
       setError(result.error);
       return;
     }
+
+    registerOwnCode(result.user.email, result.user.displayName);
+    if (ref) applyReferral(result.user.email, ref);
+
     router.push("/profile");
   }
 
   return (
     <>
-      <Nav />
-      <main className="mx-auto max-w-md px-6 py-16">
-        <h1 className="text-3xl font-semibold">Create your account</h1>
-        <p className="mt-2 text-sm text-ink-400">
-          TradeVerse is 18+ only. No trading, no real money.
-        </p>
+      <h1 className="text-3xl font-semibold">Create your account</h1>
+      <p className="mt-2 text-sm text-ink-400">
+        TradeVerse is 18+ only. No trading, no real money.
+      </p>
 
-        <form onSubmit={onSubmit} className="mt-8 space-y-4">
+      {ref && (
+        <div className="mt-6 flex items-start gap-3 rounded-xl border border-brand-500/40 bg-brand-500/5 p-4 text-sm">
+          <span className="text-xl leading-none">🎁</span>
+          <div className="flex-1">
+            <div className="font-medium text-ink-50">
+              {inviter ? `@${inviter} invited you` : "You were invited"}
+            </div>
+            <div className="text-xs text-ink-400">
+              Finish signup and both of you get +150 XP. Code:{" "}
+              <span className="font-mono">{ref}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={onSubmit} className="mt-8 space-y-4">
           <Field label="Display name">
             <input
               type="text"
@@ -113,8 +148,7 @@ export default function SignupPage() {
               Sign in
             </Link>
           </p>
-        </form>
-      </main>
+      </form>
     </>
   );
 }

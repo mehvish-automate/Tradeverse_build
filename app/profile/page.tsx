@@ -233,6 +233,9 @@ function ProfileInner() {
         <Link href="/history" className="hover:text-ink-100">
           History →
         </Link>
+        <Link href="/referrals" className="hover:text-ink-100">
+          Invite friends →
+        </Link>
       </div>
     </>
   );

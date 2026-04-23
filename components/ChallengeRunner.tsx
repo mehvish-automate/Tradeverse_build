@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { QuestionView } from "@/components/QuestionView";
 import { DailyResult, recordResult, scoreAnswer, todayResult } from "@/lib/progress";
 import { dailyQuestions, todayKey } from "@/lib/questions";
+import { codeFor, shareLinks } from "@/lib/referral";
 import {
   RivalEvent,
   awardStreakFreeze,
@@ -192,6 +193,7 @@ function Progress({ current, total }: { current: number; total: number }) {
 }
 
 function Results({
+  user,
   result,
   replayable,
   bonus,
@@ -252,6 +254,7 @@ function Results({
         >
           Back to profile
         </Link>
+        <ShareButton user={user} result={result} />
         <Link
           href="/leagues"
           className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-brand-300"
@@ -260,6 +263,28 @@ function Results({
         </Link>
       </div>
     </div>
+  );
+}
+
+function ShareButton({
+  user,
+  result,
+}: {
+  user: User;
+  result: DailyResult;
+}) {
+  const code = codeFor(user.email);
+  const copy = `I scored ${result.correct}/${result.total} on today's TradeVerse chart challenge.`;
+  const links = shareLinks(code, copy);
+  return (
+    <a
+      href={links.whatsapp}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="rounded-lg border border-brand-500/60 bg-brand-500/10 px-4 py-2 text-sm font-medium text-brand-200 hover:bg-brand-500/20"
+    >
+      Share on WhatsApp
+    </a>
   );
 }
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Nav } from "@/components/Nav";
+import { registerOwnCode } from "@/lib/referral";
 import { signIn } from "@/lib/session";
 
 export default function SigninPage() {
@@ -20,6 +21,7 @@ export default function SigninPage() {
       setError(result.error);
       return;
     }
+    registerOwnCode(result.user.email, result.user.displayName);
     router.push("/profile");
   }
 
