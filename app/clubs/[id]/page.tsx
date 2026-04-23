@@ -150,21 +150,35 @@ function ClubInner() {
         </ul>
       </section>
 
-      <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
         <Link
-          href={`/clubs/${club.id}/fests`}
+          href={`/clubs/${club.id}/floor`}
           className="group rounded-2xl border border-brand-500/40 bg-brand-500/5 p-5 hover:border-brand-500"
         >
           <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
+            Floor
+          </div>
+          <div className="mt-1 text-lg font-semibold">Trading floor</div>
+          <p className="mt-2 text-sm text-ink-300">
+            Club chatter — chart reads, portfolio takes, reactions.
+          </p>
+          <div className="mt-3 text-sm text-brand-300 group-hover:underline">
+            Open →
+          </div>
+        </Link>
+
+        <Link
+          href={`/clubs/${club.id}/fests`}
+          className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-5 hover:border-ink-500"
+        >
+          <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
             Fests
           </div>
-          <div className="mt-1 text-lg font-semibold">
-            Tournaments at {club.name}
-          </div>
+          <div className="mt-1 text-lg font-semibold">Tournaments</div>
           <p className="mt-2 text-sm text-ink-300">
             Multi-day club tournaments with their own leaderboard.
           </p>
-          <div className="mt-3 text-sm text-brand-300 group-hover:underline">
+          <div className="mt-3 text-sm text-ink-300 group-hover:text-ink-50">
             Open →
           </div>
         </Link>
