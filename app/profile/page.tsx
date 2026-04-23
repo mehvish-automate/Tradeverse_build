@@ -436,6 +436,9 @@ function ProfileInner() {
         <Link href="/creator" className="hover:text-ink-100">
           Creator →
         </Link>
+        <Link href="/widgets" className="hover:text-ink-100">
+          Widgets →
+        </Link>
         <Link href="/settings" className="hover:text-ink-100">
           Settings →
         </Link>

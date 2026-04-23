@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 import { InstallBanner } from "@/components/InstallBanner";
+import { PushRuntime } from "@/components/PushRuntime";
 
 export const metadata: Metadata = {
   title: {
@@ -64,6 +65,7 @@ export default function RootLayout({
       <body className="min-h-screen antialiased">
         {children}
         <InstallBanner />
+        <PushRuntime />
       </body>
     </html>
   );

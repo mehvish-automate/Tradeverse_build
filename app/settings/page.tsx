@@ -17,6 +17,16 @@ import {
   setPrefs,
 } from "@/lib/prefs";
 import { useSession } from "@/lib/session";
+import {
+  PermissionState,
+  currentPermission,
+  getReminder,
+  notificationSupported,
+  registerSW,
+  requestPermission,
+  setReminder,
+  showLocalNotification,
+} from "@/lib/webPush";
 
 export default function SettingsPage() {
   return (
@@ -39,13 +49,56 @@ function SettingsInner() {
   const [instId, setInstId] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [perm, setPerm] = useState<PermissionState>("default");
+  const [reminderOn, setReminderOn] = useState(false);
+  const [remH, setRemH] = useState(19);
+  const [remM, setRemM] = useState(30);
 
   useEffect(() => {
     if (!user) return;
     setP(getPrefs(user.email));
     setName(user.displayName);
     setInstId(getHomeInstitute(user.email) ?? "");
+    setPerm(currentPermission());
+    const r = getReminder(user.email);
+    setReminderOn(r.enabled);
+    setRemH(r.hour);
+    setRemM(r.minute);
   }, [user]);
+
+  async function enablePush() {
+    if (!user) return;
+    setMsg(null);
+    setErr(null);
+    await registerSW();
+    const p = await requestPermission();
+    setPerm(p);
+    if (p === "granted") setMsg("Notifications enabled.");
+    else if (p === "denied")
+      setErr("Browser blocked notifications. Unblock in site settings to retry.");
+  }
+
+  function saveReminder(patch: Partial<{ enabled: boolean; hour: number; minute: number }>) {
+    if (!user) return;
+    const next = {
+      enabled: patch.enabled ?? reminderOn,
+      hour: patch.hour ?? remH,
+      minute: patch.minute ?? remM,
+    };
+    setReminder(user.email, next);
+    setReminderOn(next.enabled);
+    setRemH(next.hour);
+    setRemM(next.minute);
+  }
+
+  async function testNotif() {
+    const ok = await showLocalNotification(
+      "TradeVerse test",
+      "If you see this, local notifications are working.",
+      "/inbox",
+    );
+    if (!ok) setErr("Can't show a test — check that notifications are enabled.");
+  }
 
   if (!user || !prefs) return null;
 
@@ -161,7 +214,78 @@ function SettingsInner() {
         </Row>
       </Section>
 
-      <Section title="Notifications">
+      <Section title="Push & reminders">
+        {notificationSupported() ? (
+          <>
+            <Row label="Browser notifications">
+              <div className="flex items-center gap-3">
+                <span
+                  className={
+                    "rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider " +
+                    (perm === "granted"
+                      ? "bg-brand-500/15 text-brand-300"
+                      : perm === "denied"
+                        ? "bg-red-500/15 text-red-300"
+                        : "bg-ink-800 text-ink-400")
+                  }
+                >
+                  {perm}
+                </span>
+                {perm !== "granted" && (
+                  <button
+                    onClick={enablePush}
+                    className="rounded-md bg-brand-500 px-3 py-1.5 text-xs font-semibold text-ink-950 hover:bg-brand-300"
+                  >
+                    Enable
+                  </button>
+                )}
+                {perm === "granted" && (
+                  <button
+                    onClick={testNotif}
+                    className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-900"
+                  >
+                    Test notification
+                  </button>
+                )}
+              </div>
+            </Row>
+
+            <Row label="Daily streak reminder">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-ink-200">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={reminderOn}
+                    onChange={(e) => saveReminder({ enabled: e.target.checked })}
+                    className="h-4 w-4 accent-emerald-500"
+                  />
+                  <span>Remind me at</span>
+                </label>
+                <input
+                  type="time"
+                  value={`${String(remH).padStart(2, "0")}:${String(remM).padStart(2, "0")}`}
+                  onChange={(e) => {
+                    const [h, m] = e.target.value.split(":").map(Number);
+                    saveReminder({ hour: h, minute: m });
+                  }}
+                  disabled={!reminderOn}
+                  className="input max-w-[120px] disabled:opacity-50"
+                />
+                <span className="text-xs text-ink-500">
+                  fires once per day if you haven&apos;t played yet
+                </span>
+              </div>
+            </Row>
+          </>
+        ) : (
+          <p className="text-sm text-ink-400">
+            This browser doesn&apos;t support web notifications. Install the
+            PWA for a better experience.
+          </p>
+        )}
+      </Section>
+
+      <Section title="Alert types">
         <Toggle
           label="Streak reminders"
           description="Nudge when you're about to break your streak."
