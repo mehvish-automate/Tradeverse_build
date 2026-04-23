@@ -289,6 +289,27 @@ function ProfileInner() {
         </Link>
       </div>
 
+      <div className="mt-4 grid grid-cols-1 gap-4">
+        <Link
+          href="/clubs"
+          className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
+                Institutes · Clubs
+              </div>
+              <div className="mt-1 text-xl font-semibold">Clubs</div>
+              <p className="mt-2 text-sm text-ink-300">
+                Your college or CA institute&apos;s finance club. Find it or
+                start one.
+              </p>
+            </div>
+            <span className="text-sm text-ink-300 group-hover:text-ink-50">Open →</span>
+          </div>
+        </Link>
+      </div>
+
       <div className="mt-10 flex flex-wrap gap-4 text-sm text-ink-400">
         <Link href="/quests" className="hover:text-ink-100">
           Quests →
