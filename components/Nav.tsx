@@ -22,12 +22,20 @@ export function Nav() {
         </nav>
 
         {loaded && user ? (
-          <Link
-            href="/profile"
-            className="rounded-md border border-ink-700 px-3 py-1.5 text-xs font-medium text-ink-100 hover:bg-ink-900"
-          >
-            @{user.displayName}
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/learn"
+              className="hidden rounded-md border border-ink-700 px-3 py-1.5 text-xs font-medium text-ink-100 hover:bg-ink-900 md:inline-block"
+            >
+              Learn
+            </Link>
+            <Link
+              href="/profile"
+              className="rounded-md border border-ink-700 px-3 py-1.5 text-xs font-medium text-ink-100 hover:bg-ink-900"
+            >
+              @{user.displayName}
+            </Link>
+          </div>
         ) : (
           <div className="flex items-center gap-2">
             <Link

@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
+import { TRACKS } from "@/lib/learn";
+import { nextLesson, overallCompletion } from "@/lib/learnProgress";
 import { getMyLeagues } from "@/lib/leagues";
 import { getProgress } from "@/lib/progress";
 import { ageFromDob, useSession } from "@/lib/session";
@@ -31,17 +33,36 @@ function ProfileInner() {
     totalXp: 0,
     plays: 0,
     leagues: 0,
+    learnPct: 0,
+    learnDone: 0,
+    learnTotal: 0,
+    nextLessonId: null as string | null,
+    nextLessonTitle: "",
+    nextTrackTitle: "",
   });
 
   useEffect(() => {
     if (!user) return;
     const p = getProgress(user.email);
     const ls = getMyLeagues(user.email);
+    const learn = overallCompletion(user.email);
+    const nxt = nextLesson(user.email);
+    const nxtLesson = nxt
+      ? TRACKS.find((t) => t.id === nxt.track.id)?.lessons.find(
+          (l) => l.id === nxt.lessonId,
+        )
+      : null;
     setProgress({
       streak: p.streak,
       totalXp: p.totalXp,
       plays: p.history.length,
       leagues: ls.length,
+      learnPct: learn.pct,
+      learnDone: learn.done,
+      learnTotal: learn.total,
+      nextLessonId: nxt?.lessonId ?? null,
+      nextLessonTitle: nxtLesson?.title ?? "",
+      nextTrackTitle: nxt?.track.title ?? "",
     });
   }, [user]);
 
@@ -88,7 +109,33 @@ function ProfileInner() {
         />
       </div>
 
-      <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2">
+      {progress.nextLessonId && (
+        <Link
+          href={`/learn/${progress.nextLessonId}`}
+          className="group mt-10 block rounded-2xl border border-brand-500/40 bg-gradient-to-br from-brand-500/10 to-transparent p-6 hover:border-brand-500"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
+                Up next · Learn
+              </div>
+              <div className="mt-1 text-xl font-semibold">
+                {progress.nextLessonTitle}
+              </div>
+              <div className="mt-1 text-xs text-ink-400">
+                {progress.nextTrackTitle} · {progress.learnDone}/
+                {progress.learnTotal} lessons complete
+              </div>
+            </div>
+            <div className="shrink-0 text-right">
+              <div className="text-xs text-ink-500">Tree</div>
+              <div className="text-2xl font-semibold">{progress.learnPct}%</div>
+            </div>
+          </div>
+        </Link>
+      )}
+
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
         <Link
           href="/play"
           className="group rounded-2xl border border-brand-500/40 bg-brand-500/5 p-6 hover:bg-brand-500/10"
@@ -96,13 +143,12 @@ function ProfileInner() {
           <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
             H1 · Daily
           </div>
-          <div className="mt-1 text-2xl font-semibold">Play today&apos;s chart challenge</div>
+          <div className="mt-1 text-xl font-semibold">Today&apos;s chart challenge</div>
           <p className="mt-2 text-sm text-ink-300">
-            5 questions. ~5 minutes. Patterns, levels, and fundamentals from
-            yesterday&apos;s tape.
+            5 questions from yesterday&apos;s tape.
           </p>
           <div className="mt-4 text-sm text-brand-300 group-hover:underline">
-            Start →
+            Play →
           </div>
         </Link>
 
@@ -113,14 +159,38 @@ function ProfileInner() {
           <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
             H2 · Social
           </div>
-          <div className="mt-1 text-2xl font-semibold">Friend leagues</div>
+          <div className="mt-1 text-xl font-semibold">Friend leagues</div>
           <p className="mt-2 text-sm text-ink-300">
-            Create one or join via invite code. 3–20 friends, weekly cycle,
-            zero money.
+            3–20 friends, weekly cycle, zero money.
           </p>
           <div className="mt-4 text-sm text-ink-300 group-hover:text-ink-50">
             Open →
           </div>
+        </Link>
+
+        <Link
+          href="/learn"
+          className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
+        >
+          <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
+            Learn
+          </div>
+          <div className="mt-1 text-xl font-semibold">Skill tree</div>
+          <p className="mt-2 text-sm text-ink-300">
+            Bite-sized lessons. Unlock as you go.
+          </p>
+          <div className="mt-4 text-sm text-ink-300 group-hover:text-ink-50">
+            Open →
+          </div>
+        </Link>
+      </div>
+
+      <div className="mt-10">
+        <Link
+          href="/history"
+          className="text-sm text-ink-400 hover:text-ink-100"
+        >
+          View history →
         </Link>
       </div>
     </>
