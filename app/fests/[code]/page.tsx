@@ -15,6 +15,11 @@ import {
   getFest,
   joinFest,
 } from "@/lib/fests";
+import {
+  ensureOfficialInStore,
+  getOfficialTournament,
+  isOfficial,
+} from "@/lib/officialTournaments";
 import { useSession } from "@/lib/session";
 
 export default function FestPage() {
@@ -40,7 +45,11 @@ function FestInner() {
 
   useEffect(() => {
     if (!code || !user) return;
-    const f = getFest(code);
+    let f = getFest(code);
+    if (!f && isOfficial(code)) {
+      ensureOfficialInStore(code);
+      f = getFest(code);
+    }
     if (!f) {
       setFest(null);
       return;
@@ -73,7 +82,8 @@ function FestInner() {
     );
   }
 
-  const club = getClub(fest.clubId);
+  const official = getOfficialTournament(fest.id);
+  const club = official ? null : getClub(fest.clubId);
   const inst = club ? getInstitute(club.instituteId) : null;
   const status = festStatus(fest);
   const rows = festLeaderboard(fest, user.email);
@@ -106,6 +116,11 @@ function FestInner() {
             >
               {status}
             </span>
+            {official && (
+              <span className="rounded-md bg-violet-500/20 px-1.5 py-0.5 font-semibold uppercase tracking-wider text-violet-300">
+                Official
+              </span>
+            )}
             <span className="text-ink-500">
               {fest.startDate} → {fest.endDate}
             </span>
@@ -117,15 +132,21 @@ function FestInner() {
             </p>
           )}
           <div className="mt-2 text-xs text-ink-500">
-            Hosted by{" "}
-            {club ? (
-              <Link href={`/clubs/${club.id}`} className="hover:text-ink-100">
-                {club.name}
-              </Link>
+            {official ? (
+              <>Hosted by <span className="text-violet-300">TradeVerse Official</span></>
             ) : (
-              "Unknown club"
+              <>
+                Hosted by{" "}
+                {club ? (
+                  <Link href={`/clubs/${club.id}`} className="hover:text-ink-100">
+                    {club.name}
+                  </Link>
+                ) : (
+                  "Unknown club"
+                )}
+                {inst && ` · ${inst.short}`}
+              </>
             )}
-            {inst && ` · ${inst.short}`}
           </div>
           <div className="mt-2 text-xs text-ink-500">
             Code:{" "}
