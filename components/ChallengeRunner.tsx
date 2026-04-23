@@ -4,8 +4,16 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { QuestionView } from "@/components/QuestionView";
-import { recordResult, scoreAnswer, todayResult } from "@/lib/progress";
+import { DailyResult, recordResult, scoreAnswer, todayResult } from "@/lib/progress";
 import { dailyQuestions, todayKey } from "@/lib/questions";
+import {
+  RivalEvent,
+  awardStreakFreeze,
+  computeRivalEvent,
+  getStreakFreezes,
+  logReward,
+  rollMysteryReward,
+} from "@/lib/rewards";
 import { User } from "@/lib/session";
 
 type Answered = {
@@ -14,6 +22,17 @@ type Answered = {
   correct: boolean;
   msTaken: number;
   xp: number;
+};
+
+type BonusSummary = {
+  base: number;
+  multiplier: number;
+  multiplierLabel: string;
+  multiplierDescription: string;
+  rival: RivalEvent | null;
+  streak: number;
+  streakFreezes: number;
+  freezeEarned: boolean;
 };
 
 export function ChallengeRunner({ user }: { user: User }) {
@@ -25,6 +44,7 @@ export function ChallengeRunner({ user }: { user: User }) {
   const [answered, setAnswered] = useState<Answered[]>([]);
   const [done, setDone] = useState(priorResult != null);
   const [summary, setSummary] = useState(priorResult);
+  const [bonus, setBonus] = useState<BonusSummary | null>(null);
 
   const startedAt = useRef<number>(Date.now());
   useEffect(() => {
@@ -33,7 +53,14 @@ export function ChallengeRunner({ user }: { user: User }) {
   }, [idx]);
 
   if (done && summary) {
-    return <Results user={user} result={summary} replayable={priorResult == null} />;
+    return (
+      <Results
+        user={user}
+        result={summary}
+        replayable={priorResult == null}
+        bonus={bonus}
+      />
+    );
   }
 
   const q = questions[idx];
@@ -61,17 +88,46 @@ export function ChallengeRunner({ user }: { user: User }) {
 
     if (idx + 1 >= questions.length) {
       const totalCorrect = nextAnswered.filter((a) => a.correct).length;
-      const totalXp = nextAnswered.reduce((s, a) => s + a.xp, 0);
+      const baseXp = nextAnswered.reduce((s, a) => s + a.xp, 0);
       const totalMs = nextAnswered.reduce((s, a) => s + a.msTaken, 0);
-      const result = {
-        dateKey: todayKey(),
+      const dateKey = todayKey();
+
+      const mystery = rollMysteryReward(user.email, dateKey);
+      const totalXp = Math.round(baseXp * mystery.multiplier);
+      logReward(user.email, {
+        kind: "mystery",
+        detail: `${mystery.label} → ${totalXp} XP`,
+      });
+
+      const result: DailyResult = {
+        dateKey,
         correct: totalCorrect,
         total: questions.length,
         xp: totalXp,
         timeMs: totalMs,
       };
-      recordResult(user.email, result);
+      const store = recordResult(user.email, result);
+
+      // Every 5th streak day awards a freeze token + a celebratory log.
+      if (store.streak > 0 && store.streak % 5 === 0) {
+        awardStreakFreeze(user.email, 1);
+        logReward(user.email, {
+          kind: "freeze",
+          detail: `Streak ${store.streak} → +1 streak freeze`,
+        });
+      }
+
       setSummary(result);
+      setBonus({
+        base: baseXp,
+        multiplier: mystery.multiplier,
+        multiplierLabel: mystery.label,
+        multiplierDescription: mystery.description,
+        rival: computeRivalEvent(user.email, user.displayName),
+        streak: store.streak,
+        streakFreezes: getStreakFreezes(user.email),
+        freezeEarned: store.streak > 0 && store.streak % 5 === 0,
+      });
       setDone(true);
     } else {
       setIdx(idx + 1);
@@ -138,10 +194,12 @@ function Progress({ current, total }: { current: number; total: number }) {
 function Results({
   result,
   replayable,
+  bonus,
 }: {
   user: User;
   result: NonNullable<ReturnType<typeof todayResult>>;
   replayable: boolean;
+  bonus: BonusSummary | null;
 }) {
   const pct = Math.round((result.correct / result.total) * 100);
   return (
@@ -158,6 +216,11 @@ function Results({
         <div className="rounded-lg border border-ink-700 bg-ink-950/60 p-4">
           <div className="text-xs text-ink-500">XP earned</div>
           <div className="mt-1 text-2xl font-semibold">{result.xp}</div>
+          {bonus && bonus.multiplier > 1 && (
+            <div className="mt-0.5 text-xs text-brand-300">
+              +{result.xp - bonus.base} bonus
+            </div>
+          )}
         </div>
         <div className="rounded-lg border border-ink-700 bg-ink-950/60 p-4">
           <div className="text-xs text-ink-500">Time</div>
@@ -166,6 +229,14 @@ function Results({
           </div>
         </div>
       </div>
+
+      {bonus && (
+        <div className="mx-auto mt-6 max-w-md space-y-3 text-left">
+          <MysteryCard bonus={bonus} />
+          {bonus.rival && <RivalCard event={bonus.rival} />}
+          <StreakCard bonus={bonus} />
+        </div>
+      )}
 
       {!replayable && (
         <p className="mt-6 text-sm text-ink-400">
@@ -187,6 +258,88 @@ function Results({
         >
           Compare with friends →
         </Link>
+      </div>
+    </div>
+  );
+}
+
+function MysteryCard({ bonus }: { bonus: BonusSummary }) {
+  const isBoost = bonus.multiplier > 1;
+  return (
+    <div
+      className={
+        "flex items-start gap-3 rounded-xl border p-4 " +
+        (isBoost
+          ? "border-brand-500/50 bg-brand-500/10"
+          : "border-ink-700 bg-ink-950/50")
+      }
+    >
+      <span
+        className={
+          "shrink-0 rounded-md px-2 py-1 text-xs font-semibold " +
+          (isBoost ? "bg-brand-500 text-ink-950" : "bg-ink-800 text-ink-300")
+        }
+      >
+        {bonus.multiplierLabel}
+      </span>
+      <div className="min-w-0">
+        <div className="text-sm font-medium text-ink-50">
+          {isBoost ? "Mystery bonus hit" : "Today's mystery pull"}
+        </div>
+        <div className="text-xs text-ink-400">{bonus.multiplierDescription}</div>
+      </div>
+    </div>
+  );
+}
+
+function RivalCard({ event }: { event: RivalEvent }) {
+  let icon = "👥";
+  let title = "";
+  let body = "";
+
+  if (event.kind === "passed") {
+    icon = "📈";
+    title = `You just passed @${event.rival}`;
+    body = `In ${event.league}. Keep the pressure on.`;
+  } else if (event.kind === "about-to-be-passed") {
+    icon = "⚠️";
+    title = `@${event.rival} is ${event.gap} XP behind`;
+    body = `In ${event.league}. One good run and they're ahead.`;
+  } else if (event.kind === "lead") {
+    icon = "👑";
+    title = `You're #1 in ${event.league}`;
+    body = `${event.total - 1} players trying to catch you.`;
+  }
+
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-ink-700 bg-ink-950/50 p-4">
+      <span className="text-2xl leading-none">{icon}</span>
+      <div className="min-w-0">
+        <div className="text-sm font-medium text-ink-50">{title}</div>
+        <div className="text-xs text-ink-400">{body}</div>
+      </div>
+    </div>
+  );
+}
+
+function StreakCard({ bonus }: { bonus: BonusSummary }) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-ink-700 bg-ink-950/50 p-4">
+      <span className="text-2xl leading-none">🔥</span>
+      <div className="min-w-0">
+        <div className="text-sm font-medium text-ink-50">
+          {bonus.streak}-day streak
+          {bonus.freezeEarned && (
+            <span className="ml-2 rounded-md bg-brand-500/15 px-1.5 py-0.5 text-xs text-brand-300">
+              +1 streak freeze
+            </span>
+          )}
+        </div>
+        <div className="text-xs text-ink-400">
+          {bonus.streakFreezes > 0
+            ? `${bonus.streakFreezes} freeze${bonus.streakFreezes === 1 ? "" : "s"} in the bank — miss a day and your streak survives.`
+            : "Play tomorrow to keep it alive. Earn a freeze token every 5 days."}
+        </div>
       </div>
     </div>
   );
