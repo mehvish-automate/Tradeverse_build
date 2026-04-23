@@ -1,6 +1,9 @@
 "use client";
 
+import { myAmbassadorships } from "./ambassadors";
+import { myClubs } from "./clubs";
 import { beatNiftyCount, resolvedParticipations } from "./eventPortfolios";
+import { festsParticipatedCount, festsWonCount } from "./fests";
 import { completedSet } from "./learnProgress";
 import { getMyTradeFloors } from "./tradeFloors";
 import { listPortfolios } from "./portfolios";
@@ -29,6 +32,10 @@ export type ProgressCtx = {
   portfoliosCount: number;
   resolvedEvents: number;
   beatNiftyEvents: number;
+  clubsCount: number;
+  festsJoined: number;
+  festsWon: number;
+  ambassadorships: number;
 };
 
 const CLAIM_KEY = (email: string) => `tv.quests.claims.${email}`;
@@ -170,6 +177,39 @@ export const QUESTS: Quest[] = [
       target: 1,
     }),
   },
+  {
+    id: "w-club",
+    window: "weekly",
+    title: "Join or start a club",
+    description: "Find your institute, join its finance club.",
+    rewardXp: 150,
+    progress: ({ clubsCount }) => ({
+      done: Math.min(clubsCount, 1),
+      target: 1,
+    }),
+  },
+  {
+    id: "m-fest",
+    window: "monthly",
+    title: "Join a fest",
+    description: "Enter a multi-day club tournament via invite code.",
+    rewardXp: 300,
+    progress: ({ festsJoined }) => ({
+      done: Math.min(festsJoined, 1),
+      target: 1,
+    }),
+  },
+  {
+    id: "m-fest-win",
+    window: "monthly",
+    title: "Win a fest",
+    description: "Finish #1 on a resolved fest leaderboard.",
+    rewardXp: 800,
+    progress: ({ festsWon }) => ({
+      done: Math.min(festsWon, 1),
+      target: 1,
+    }),
+  },
 ];
 
 function runsForWindow(
@@ -204,6 +244,10 @@ export function buildContext(email: string, now = new Date()): ProgressCtx {
     portfoliosCount: listPortfolios(email).length,
     resolvedEvents: resolvedParticipations(email),
     beatNiftyEvents: beatNiftyCount(email),
+    clubsCount: myClubs(email).length,
+    festsJoined: festsParticipatedCount(email),
+    festsWon: festsWonCount(email),
+    ambassadorships: myAmbassadorships(email).length,
   };
 }
 

@@ -1,6 +1,9 @@
 "use client";
 
+import { isAmbassador } from "./ambassadors";
+import { myClubs } from "./clubs";
 import { beatNiftyCount, resolvedParticipations } from "./eventPortfolios";
+import { festsParticipatedCount, festsWonCount } from "./fests";
 import { TRACKS } from "./learn";
 import { completedSet, overallCompletion } from "./learnProgress";
 import { getMyTradeFloors } from "./tradeFloors";
@@ -30,6 +33,10 @@ export type BadgeCtx = {
   portfoliosCount: number;
   resolvedEvents: number;
   beatNiftyEvents: number;
+  clubsCount: number;
+  festsJoined: number;
+  festsWon: number;
+  isAmbassador: boolean;
 };
 
 export const BADGES: Badge[] = [
@@ -137,6 +144,38 @@ export const BADGES: Badge[] = [
     tier: "gold",
     earned: ({ beatNiftyEvents }) => beatNiftyEvents >= 1,
   },
+  {
+    id: "b-club-first",
+    title: "Club member",
+    icon: "🎓",
+    description: "Join or start your first institute club.",
+    tier: "bronze",
+    earned: ({ clubsCount }) => clubsCount >= 1,
+  },
+  {
+    id: "b-fest-first",
+    title: "Fest entrant",
+    icon: "🎪",
+    description: "Join your first multi-day fest.",
+    tier: "silver",
+    earned: ({ festsJoined }) => festsJoined >= 1,
+  },
+  {
+    id: "b-fest-win",
+    title: "Fest champion",
+    icon: "🏅",
+    description: "Finish #1 on a resolved fest leaderboard.",
+    tier: "gold",
+    earned: ({ festsWon }) => festsWon >= 1,
+  },
+  {
+    id: "b-ambassador",
+    title: "Campus Ambassador",
+    icon: "🎖️",
+    description: "Own an institute ambassadorship.",
+    tier: "gold",
+    earned: ({ isAmbassador }) => isAmbassador,
+  },
 ];
 
 export function buildBadgeCtx(email: string): BadgeCtx {
@@ -170,6 +209,9 @@ export function buildBadgeCtx(email: string): BadgeCtx {
   const portfoliosCount = listPortfolios(email).length;
   const resolvedEvents = resolvedParticipations(email);
   const beatNiftyEvents = beatNiftyCount(email);
+  const clubsCount = myClubs(email).length;
+  const festsJoined = festsParticipatedCount(email);
+  const festsWon = festsWonCount(email);
 
   return {
     email,
@@ -184,6 +226,10 @@ export function buildBadgeCtx(email: string): BadgeCtx {
     portfoliosCount,
     resolvedEvents,
     beatNiftyEvents,
+    clubsCount,
+    festsJoined,
+    festsWon,
+    isAmbassador: isAmbassador(email),
   };
 }
 

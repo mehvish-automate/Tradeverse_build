@@ -8,6 +8,7 @@ import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import { TRACKS } from "@/lib/learn";
 import { nextLesson, overallCompletion } from "@/lib/learnProgress";
+import { isAmbassador } from "@/lib/ambassadors";
 import { earnedCount } from "@/lib/badges";
 import { EVENTS, isResolved } from "@/lib/events";
 import { myAllocation } from "@/lib/eventPortfolios";
@@ -48,6 +49,7 @@ function ProfileInner() {
     badgesEarned: 0,
     badgesTotal: 0,
     eventClaimable: 0,
+    ambassador: false,
   });
 
   useEffect(() => {
@@ -86,6 +88,7 @@ function ProfileInner() {
       badgesEarned: badges.earned,
       badgesTotal: badges.total,
       eventClaimable,
+      ambassador: isAmbassador(user.email),
     });
   }, [user]);
 
@@ -97,7 +100,14 @@ function ProfileInner() {
     <>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold">@{user.displayName}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-semibold">@{user.displayName}</h1>
+            {progress.ambassador && (
+              <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300">
+                🎖️ Ambassador
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-ink-400">
             {user.email} · {age} yrs · joined{" "}
             {new Date(user.createdAt).toLocaleDateString()}
@@ -322,6 +332,9 @@ function ProfileInner() {
         </Link>
         <Link href="/referrals" className="hover:text-ink-100">
           Invite friends →
+        </Link>
+        <Link href="/ambassadors" className="hover:text-ink-100">
+          Ambassador →
         </Link>
       </div>
     </>
