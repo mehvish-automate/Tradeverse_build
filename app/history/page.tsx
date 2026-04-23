@@ -1,12 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import { DailyResult, getProgress } from "@/lib/progress";
 import { useSession } from "@/lib/session";
+
+type Window = "1D" | "1W" | "1M" | "6M" | "ALL";
+
+const WINDOWS: { id: Window; days: number | null; label: string }[] = [
+  { id: "1D",  days: 1,    label: "1D" },
+  { id: "1W",  days: 7,    label: "1W" },
+  { id: "1M",  days: 30,   label: "1M" },
+  { id: "6M",  days: 180,  label: "6M" },
+  { id: "ALL", days: null, label: "All" },
+];
 
 export default function HistoryPage() {
   return (
@@ -23,37 +33,42 @@ export default function HistoryPage() {
 
 function HistoryInner() {
   const { user } = useSession();
-  const [store, setStore] = useState<{
-    streak: number;
-    totalXp: number;
-    history: DailyResult[];
-  }>({ streak: 0, totalXp: 0, history: [] });
+  const [all, setAll] = useState<DailyResult[]>([]);
+  const [streak, setStreak] = useState(0);
+  const [window, setWindow] = useState<Window>("1M");
 
   useEffect(() => {
     if (!user) return;
     const p = getProgress(user.email);
-    setStore({
-      streak: p.streak,
-      totalXp: p.totalXp,
-      history: [...p.history].sort((a, b) => (a.dateKey < b.dateKey ? 1 : -1)),
-    });
+    setStreak(p.streak);
+    setAll([...p.history].sort((a, b) => (a.dateKey < b.dateKey ? 1 : -1)));
   }, [user]);
+
+  const windowDays =
+    WINDOWS.find((w) => w.id === window)?.days ?? null;
+
+  const filtered = useMemo(() => {
+    if (windowDays == null) return all;
+    const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000;
+    return all.filter((r) => new Date(r.dateKey).getTime() >= cutoff);
+  }, [all, windowDays]);
 
   if (!user) return null;
 
-  const totalQs = store.history.reduce((s, r) => s + r.total, 0);
-  const totalCorrect = store.history.reduce((s, r) => s + r.correct, 0);
+  const totalQs = filtered.reduce((s, r) => s + r.total, 0);
+  const totalCorrect = filtered.reduce((s, r) => s + r.correct, 0);
+  const totalXp = filtered.reduce((s, r) => s + r.xp, 0);
+  const totalMs = filtered.reduce((s, r) => s + r.timeMs, 0);
   const accuracy = totalQs === 0 ? 0 : Math.round((totalCorrect / totalQs) * 100);
-  const avgMs =
-    store.history.length === 0
-      ? 0
-      : Math.round(
-          store.history.reduce((s, r) => s + r.timeMs, 0) / store.history.length,
-        );
+  const avgTimePerQ =
+    totalQs === 0 ? 0 : Math.round(totalMs / totalQs / 1000);
+  const avgTimePerRun =
+    filtered.length === 0 ? 0 : Math.round(totalMs / filtered.length / 1000);
+  const perfectRuns = filtered.filter((r) => r.correct === r.total).length;
 
   return (
     <>
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-semibold">History</h1>
         <p className="mt-1 text-sm text-ink-400">
           Your daily challenge runs. Accuracy drifts up once you start
@@ -61,27 +76,98 @@ function HistoryInner() {
         </p>
       </div>
 
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-ink-500">Window:</span>
+        {WINDOWS.map((w) => (
+          <button
+            key={w.id}
+            onClick={() => setWindow(w.id)}
+            className={
+              "rounded-md border px-3 py-1.5 text-xs transition " +
+              (window === w.id
+                ? "border-brand-500 bg-brand-500/10 text-brand-200"
+                : "border-ink-700 text-ink-300 hover:border-ink-500")
+            }
+          >
+            {w.label}
+          </button>
+        ))}
+        <span className="ml-auto text-xs text-ink-500">
+          🔥 {streak}-day streak
+        </span>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Plays" value={`${store.history.length}`} />
-        <Stat label="Accuracy" value={`${accuracy}%`} />
-        <Stat label="Total XP" value={store.totalXp.toLocaleString()} />
-        <Stat label="Avg time" value={`${Math.round(avgMs / 1000)}s`} />
+        <Stat label="Plays" value={`${filtered.length}`} />
+        <Stat
+          label="Accuracy"
+          value={`${accuracy}%`}
+          sub={`${totalCorrect}/${totalQs} correct`}
+        />
+        <Stat label="XP in window" value={totalXp.toLocaleString()} />
+        <Stat
+          label="Avg time"
+          value={`${avgTimePerQ}s`}
+          sub={`${avgTimePerRun}s per run`}
+        />
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Stat
+          label="Perfect runs"
+          value={`${perfectRuns}`}
+          sub={
+            filtered.length === 0
+              ? "—"
+              : `${Math.round((perfectRuns / filtered.length) * 100)}% of runs`
+          }
+        />
+        <Stat
+          label="Total time"
+          value={formatDuration(totalMs)}
+          sub="in window"
+        />
+        <Stat
+          label="Questions"
+          value={`${totalQs}`}
+          sub="answered"
+        />
+        <Stat
+          label="Avg XP / run"
+          value={
+            filtered.length === 0
+              ? "0"
+              : Math.round(totalXp / filtered.length).toLocaleString()
+          }
+        />
       </div>
 
       <div className="mt-10">
         <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-ink-400">
-          Last {store.history.length} runs
+          {filtered.length} run{filtered.length === 1 ? "" : "s"} in window
         </h2>
-        {store.history.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="rounded-xl border border-ink-700 bg-ink-900/40 p-6 text-sm text-ink-400">
-            No plays yet.{" "}
-            <Link href="/play" className="text-brand-300 hover:underline">
-              Start today&apos;s challenge →
-            </Link>
+            {all.length === 0 ? (
+              <>
+                No plays yet.{" "}
+                <Link href="/play" className="text-brand-300 hover:underline">
+                  Start today&apos;s challenge →
+                </Link>
+              </>
+            ) : (
+              <>
+                Nothing inside {window}. Try a wider window or{" "}
+                <Link href="/play" className="text-brand-300 hover:underline">
+                  play today
+                </Link>
+                .
+              </>
+            )}
           </div>
         ) : (
           <ul className="divide-y divide-ink-900 rounded-xl border border-ink-700 bg-ink-900/40">
-            {store.history.map((r) => {
+            {filtered.map((r) => {
               const pct = Math.round((r.correct / r.total) * 100);
               return (
                 <li
@@ -127,11 +213,20 @@ function HistoryInner() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
   return (
     <div className="rounded-xl border border-ink-700 bg-ink-900/40 p-4">
       <div className="text-xs text-ink-500">{label}</div>
       <div className="mt-1 text-2xl font-semibold">{value}</div>
+      {sub && <div className="mt-0.5 text-[11px] text-ink-500">{sub}</div>}
     </div>
   );
 }
@@ -154,4 +249,15 @@ function formatDate(key: string): string {
     month: "short",
     day: "numeric",
   });
+}
+
+function formatDuration(ms: number): string {
+  const total = Math.round(ms / 1000);
+  if (total < 60) return `${total}s`;
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  if (m < 60) return `${m}m ${s}s`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return `${h}h ${mm}m`;
 }
