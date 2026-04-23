@@ -10,8 +10,10 @@ import { TRACKS } from "@/lib/learn";
 import { nextLesson, overallCompletion } from "@/lib/learnProgress";
 import { isAmbassador } from "@/lib/ambassadors";
 import { earnedCount } from "@/lib/badges";
+import { getInstitute } from "@/lib/clubs";
 import { EVENTS, isResolved } from "@/lib/events";
 import { myAllocation } from "@/lib/eventPortfolios";
+import { getHomeInstitute } from "@/lib/onboarding";
 import { getMyTradeFloors } from "@/lib/tradeFloors";
 import { getProgress } from "@/lib/progress";
 import { viewQuests } from "@/lib/quests";
@@ -50,6 +52,7 @@ function ProfileInner() {
     badgesTotal: 0,
     eventClaimable: 0,
     ambassador: false,
+    homeInstitute: "",
   });
 
   useEffect(() => {
@@ -89,6 +92,11 @@ function ProfileInner() {
       badgesTotal: badges.total,
       eventClaimable,
       ambassador: isAmbassador(user.email),
+      homeInstitute: (() => {
+        const id = getHomeInstitute(user.email);
+        if (!id) return "";
+        return getInstitute(id)?.short ?? "";
+      })(),
     });
   }, [user]);
 
@@ -109,7 +117,8 @@ function ProfileInner() {
             )}
           </div>
           <p className="mt-1 text-sm text-ink-400">
-            {user.email} · {age} yrs · joined{" "}
+            {user.email} · {age} yrs
+            {progress.homeInstitute && ` · ${progress.homeInstitute}`} · joined{" "}
             {new Date(user.createdAt).toLocaleDateString()}
           </p>
         </div>

@@ -55,7 +55,7 @@ function SignupForm() {
     registerOwnCode(result.user.email, result.user.displayName);
     if (ref) applyReferral(result.user.email, ref);
 
-    router.push("/profile");
+    router.push("/welcome");
   }
 
   return (
