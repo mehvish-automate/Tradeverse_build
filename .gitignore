@@ -27,3 +27,4 @@ yarn-error.log*
 # misc
 *.tsbuildinfo
 next-env.d.ts.bak
+.claude/settings.local.json
