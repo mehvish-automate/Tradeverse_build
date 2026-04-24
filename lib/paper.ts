@@ -16,6 +16,7 @@
 
 import { bookAtPrice, L2Level } from "./orderbook";
 import { price } from "./stocks";
+import { writeOrder } from "./supabase/writes";
 
 const STARTING_CASH = 1_000_000;
 
@@ -101,6 +102,24 @@ function readOrders(email: string): Order[] {
 
 function writeOrders(email: string, orders: Order[]) {
   localStorage.setItem(ORDERS_KEY(email), JSON.stringify(orders));
+}
+
+function mirrorOrderToCloud(o: Order) {
+  // Fire-and-forget — the helper no-ops when the user isn't signed in.
+  void writeOrder({
+    id: o.id,
+    symbol: o.symbol,
+    side: o.side,
+    kind: o.kind,
+    qty: o.qty,
+    filledQty: o.filledQty,
+    avgFillPrice: o.avgFillPrice,
+    limitPrice: o.limitPrice ?? null,
+    stopPrice: o.stopPrice ?? null,
+    status: o.status,
+    fills: o.fills,
+    placedAt: o.placedAt,
+  });
 }
 
 export function listOrders(email: string): Order[] {
@@ -194,6 +213,7 @@ export function placeOrder(
   const all = readOrders(email);
   all.push(order);
   writeOrders(email, all);
+  mirrorOrderToCloud(order);
 
   // Deterministic-but-feels-real latency.
   const latency = 250 + Math.floor(Math.random() * 250);
@@ -213,6 +233,7 @@ export function cancelOrder(email: string, orderId: string): boolean {
   o.status = "cancelled";
   o.lastUpdated = Date.now();
   writeOrders(email, all);
+  mirrorOrderToCloud(o);
   return true;
 }
 
@@ -299,6 +320,7 @@ function finalizeOrder(
   order.status = totalFilled >= order.qty ? "filled" : "partial";
   order.lastUpdated = Date.now();
   writeOrders(email, all);
+  mirrorOrderToCloud(order);
   return order;
 }
 

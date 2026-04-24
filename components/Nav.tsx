@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { unreadCount } from "@/lib/notifications";
 import { useSession } from "@/lib/session";
 
+import { CloudBadge } from "./CloudBadge";
+
 export function Nav() {
   const { user, loaded } = useSession();
   const [unread, setUnread] = useState(0);
@@ -33,6 +35,7 @@ export function Nav() {
 
         {loaded && user ? (
           <div className="flex items-center gap-2">
+            <CloudBadge />
             <Link
               href="/learn"
               className="hidden rounded-md border border-ink-700 px-3 py-1.5 text-xs font-medium text-ink-100 hover:bg-ink-900 md:inline-block"

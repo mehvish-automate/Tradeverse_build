@@ -14,6 +14,7 @@ import { todayKey } from "./questions";
 import { ordersPlacedCount } from "./paper";
 import { hostedSessionsCount, mySessions } from "./sessions";
 import { watchlistCount } from "./watchlist";
+import { writeQuestClaim } from "./supabase/writes";
 
 export type QuestWindow = "daily" | "weekly" | "monthly";
 
@@ -363,6 +364,7 @@ export function claimQuest(
   if (claims[key]) return { ok: false, error: "Already claimed." };
   claims[key] = Date.now();
   writeClaims(email, claims);
+  void writeQuestClaim(key, rewardXp);
 
   // Credit XP into the main progress store.
   const PROGRESS_KEY = `tv.progress.${email}`;

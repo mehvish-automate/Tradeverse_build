@@ -1,6 +1,7 @@
 "use client";
 
 import { STOCKS, Stock, getStock, pctReturn, price } from "./stocks";
+import { writeWatchlistAdd, writeWatchlistRemove } from "./supabase/writes";
 
 const KEY = (email: string) => `tv.watchlist.${email}`;
 
@@ -23,12 +24,14 @@ export function addToWatchlist(email: string, symbol: string): boolean {
   if (cur.includes(symbol)) return true;
   cur.push(symbol);
   localStorage.setItem(KEY(email), JSON.stringify(cur));
+  void writeWatchlistAdd(symbol);
   return true;
 }
 
 export function removeFromWatchlist(email: string, symbol: string) {
   const cur = getWatchlist(email).filter((s) => s !== symbol);
   localStorage.setItem(KEY(email), JSON.stringify(cur));
+  void writeWatchlistRemove(symbol);
 }
 
 export type WatchlistRow = {

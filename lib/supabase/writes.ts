@@ -164,3 +164,53 @@ export async function writeOrder(input: {
   }).upsert(row);
   return !error;
 }
+
+/** Add a symbol to the cloud watchlist (idempotent on (user_id, symbol)). */
+export async function writeWatchlistAdd(symbol: string): Promise<boolean> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return false;
+  const userId = await authedUserId();
+  if (!userId) return false;
+  const row = { user_id: userId, symbol };
+  const { error } = await (supabase.from("watchlist_items") as unknown as {
+    upsert: (row: unknown) => Promise<{ error: { message: string } | null }>;
+  }).upsert(row);
+  return !error;
+}
+
+/** Remove a symbol from the cloud watchlist. */
+export async function writeWatchlistRemove(symbol: string): Promise<boolean> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return false;
+  const userId = await authedUserId();
+  if (!userId) return false;
+  const { error } = await (
+    supabase.from("watchlist_items") as unknown as {
+      delete: () => {
+        eq: (col: string, val: string) => {
+          eq: (col: string, val: string) => Promise<{ error: { message: string } | null }>;
+        };
+      };
+    }
+  )
+    .delete()
+    .eq("user_id", userId)
+    .eq("symbol", symbol);
+  return !error;
+}
+
+/** Record a quest claim (idempotent on (user_id, quest_key)). */
+export async function writeQuestClaim(
+  questKey: string,
+  rewardXp: number,
+): Promise<boolean> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return false;
+  const userId = await authedUserId();
+  if (!userId) return false;
+  const row = { user_id: userId, quest_key: questKey, reward_xp: rewardXp };
+  const { error } = await (supabase.from("quest_claims") as unknown as {
+    upsert: (row: unknown) => Promise<{ error: { message: string } | null }>;
+  }).upsert(row);
+  return !error;
+}
