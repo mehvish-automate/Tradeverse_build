@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { Nav } from "@/components/Nav";
-import { authMode, signUpUniversal } from "@/lib/auth";
+import { signUpUniversal } from "@/lib/auth";
 import { applyReferral, handleForCode, registerOwnCode } from "@/lib/referral";
 
 export default function SignupPage() {
@@ -28,6 +28,7 @@ function SignupForm() {
   const inviter = ref ? handleForCode(ref) : null;
 
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [dob, setDob] = useState("");
   const [agree, setAgree] = useState(false);
@@ -46,7 +47,7 @@ function SignupForm() {
     }
 
     setLoading(true);
-    const result = await signUpUniversal({ email, displayName, dob });
+    const result = await signUpUniversal({ email, password, displayName, dob });
     setLoading(false);
 
     if (!result.ok) {
@@ -58,9 +59,9 @@ function SignupForm() {
     registerOwnCode(email.trim().toLowerCase(), displayName);
     if (ref) applyReferral(email.trim().toLowerCase(), ref);
 
-    if (result.mode === "supabase") {
+    if (result.mode === "supabase" && result.needsEmailConfirmation) {
       setMessage(
-        result.message ?? "Check your email for the magic link.",
+        `Account created. Check ${email} for a confirmation link, then sign in.`,
       );
       return;
     }
@@ -113,6 +114,18 @@ function SignupForm() {
             />
           </Field>
 
+          <Field label="Password" hint="Minimum 8 characters.">
+            <input
+              type="password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="input"
+            />
+          </Field>
+
           <Field label="Date of birth" hint="Must be 18 or older.">
             <input
               type="date"
@@ -153,11 +166,7 @@ function SignupForm() {
             disabled={loading}
             className="w-full rounded-lg bg-brand-500 px-5 py-3 text-sm font-medium text-ink-950 hover:bg-brand-300 disabled:opacity-60"
           >
-            {loading
-              ? "Working…"
-              : authMode() === "supabase"
-                ? "Send magic link"
-                : "Create account"}
+            {loading ? "Working…" : "Create account"}
           </button>
 
           <p className="text-center text-sm text-ink-400">

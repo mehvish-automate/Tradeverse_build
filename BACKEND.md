@@ -46,10 +46,17 @@ Use `.env.example` as the template; `.env.local` is gitignored.
 
 In the Supabase dashboard → **Authentication → Providers**:
 
-- Enable **Email** with Magic Link (default).
+- Enable **Email**. Magic Link is no longer required — TradeVerse uses
+  email + password (`supabase.auth.signUp` / `signInWithPassword`).
+- Decide whether you want **Confirm email** on or off:
+  - **Off**: signup logs the user in immediately (best UX for dev).
+  - **On**: signup creates the user but no session; the user clicks the
+    link in their inbox to confirm, lands on `/auth/callback`, then can
+    sign in. The signup screen shows a "check your email" hint.
 - Set **Site URL** to your site (`http://localhost:3000` in dev,
   `https://<your-vercel-url>` in prod).
-- Add both URLs to **Redirect URLs**.
+- Add both URLs (and `…/auth/callback`) to **Redirect URLs**. Only used
+  if email confirmation is on.
 
 ## 5 · Test the wiring
 
@@ -57,10 +64,11 @@ In the Supabase dashboard → **Authentication → Providers**:
 npm run dev
 ```
 
-Open http://localhost:3000/signup. Phase 27.2 wires the signup form to
-call `supabase.auth.signInWithOtp()`. Before then, the browser client
-just returns `null` if env isn't set and the existing localStorage
-flow continues to work.
+Open http://localhost:3000/signup. With Supabase env set, the form calls
+`supabase.auth.signUp({ email, password })` and signs the user in
+straight away (or sends a confirmation link if email confirmation is
+on). Without env, the browser client returns `null` and the legacy
+localStorage flow takes over (password is ignored in V1 mode).
 
 ## 6 · Deploy
 

@@ -2,12 +2,12 @@
 
 // Auth surface. V1 localStorage + V2 Supabase live side-by-side:
 //
-//   - When Supabase env is configured, signUp / signIn flow uses the
-//     real magic-link route. We still mirror the user into the legacy
+//   - When Supabase env is configured, signUp / signIn flow uses real
+//     email + password auth. We still mirror the user into the legacy
 //     localStorage user store so every other surface (progress, posts,
 //     etc.) keeps working through the incremental migration.
 //   - When Supabase env is missing, we fall back to the V1 flow
-//     unchanged.
+//     unchanged (email-only local "auth", password ignored).
 //
 // ageFromDob / useSession / User type still come from lib/session so
 // callers don't need to care which mode they're in.
@@ -21,44 +21,60 @@ export function authMode(): AuthMode {
   return supabaseConfigured() ? "supabase" : "local";
 }
 
-export type MagicLinkResult =
-  | { ok: true; message: string }
+export type AuthResult =
+  | { ok: true; needsEmailConfirmation: boolean }
   | { ok: false; error: string };
 
-/**
- * Send a magic link to the user's email. Supabase creates an auth.users
- * row on first sign-in; our handle_new_user() trigger seeds profiles +
- * user_stats + paper_accounts. Display name and DOB are stored in
- * auth user_metadata and copied by the trigger.
- */
-export async function sendMagicLink(input: {
-  email: string;
-  displayName?: string;
-  dob?: string;
-}): Promise<MagicLinkResult> {
-  const email = input.email.trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { ok: false, error: "Enter a valid email." };
-  }
+function validateEmail(email: string): string | null {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Enter a valid email.";
+  return null;
+}
 
+function validatePassword(password: string): string | null {
+  if (!password || password.length < 8) {
+    return "Password must be at least 8 characters.";
+  }
+  if (password.length > 72) {
+    return "Password must be at most 72 characters.";
+  }
+  return null;
+}
+
+/**
+ * Create a Supabase user with email + password. Display name and DOB
+ * are written into auth user_metadata; the handle_new_user() trigger
+ * copies them into public.profiles on insert.
+ *
+ * If the project requires email confirmation, the returned session
+ * will be null — the caller should surface a "check your email" hint.
+ */
+export async function signUpWithPassword(input: {
+  email: string;
+  password: string;
+  displayName: string;
+  dob: string;
+}): Promise<AuthResult> {
+  const email = input.email.trim().toLowerCase();
+  const emailErr = validateEmail(email);
+  if (emailErr) return { ok: false, error: emailErr };
+  const pwErr = validatePassword(input.password);
+  if (pwErr) return { ok: false, error: pwErr };
   if (input.dob && ageFromDob(input.dob) < 18) {
     return { ok: false, error: "TradeVerse is 18+ only." };
   }
 
   const supabase = getBrowserSupabase();
   if (!supabase) {
-    return {
-      ok: false,
-      error: "Backend auth isn't configured yet on this device.",
-    };
+    return { ok: false, error: "Backend auth isn't configured yet on this device." };
   }
 
   const redirectTo =
     (typeof window !== "undefined" ? window.location.origin : "") +
     "/auth/callback";
 
-  const { error } = await supabase.auth.signInWithOtp({
+  const { data, error } = await supabase.auth.signUp({
     email,
+    password: input.password,
     options: {
       emailRedirectTo: redirectTo,
       data: {
@@ -69,10 +85,31 @@ export async function sendMagicLink(input: {
   });
 
   if (error) return { ok: false, error: error.message };
-  return {
-    ok: true,
-    message: `Check ${email} for a magic link. It expires in 1 hour.`,
-  };
+  return { ok: true, needsEmailConfirmation: !data.session };
+}
+
+/** Sign in an existing user with email + password. */
+export async function signInWithPassword(input: {
+  email: string;
+  password: string;
+}): Promise<AuthResult> {
+  const email = input.email.trim().toLowerCase();
+  const emailErr = validateEmail(email);
+  if (emailErr) return { ok: false, error: emailErr };
+  if (!input.password) return { ok: false, error: "Enter your password." };
+
+  const supabase = getBrowserSupabase();
+  if (!supabase) {
+    return { ok: false, error: "Backend auth isn't configured yet on this device." };
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password: input.password,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, needsEmailConfirmation: false };
 }
 
 /** Returns the current Supabase session's user, or null. */
@@ -92,43 +129,59 @@ export async function supabaseSignOut() {
 /**
  * Universal signup.
  *
- * Supabase mode: fires a magic-link + writes a local placeholder row so
- *   the rest of the app can read a User while the email lands.
- * Local mode: falls back to lib/session's pure-localStorage signUp.
+ * Supabase mode: email + password signUp, and writes a local placeholder
+ *   row so the rest of the app has a User to read while migration
+ *   surfaces are still localStorage-backed.
+ * Local mode: falls back to lib/session's pure-localStorage signUp
+ *   (password is ignored — there's no V1 password store).
  */
 export async function signUpUniversal(input: {
   email: string;
+  password: string;
   displayName: string;
   dob: string;
 }): Promise<
-  | { ok: true; mode: AuthMode; message?: string }
+  | { ok: true; mode: AuthMode; needsEmailConfirmation?: boolean }
   | { ok: false; error: string }
 > {
   if (authMode() === "supabase") {
-    const r = await sendMagicLink(input);
+    const r = await signUpWithPassword(input);
     if (!r.ok) return r;
     // Mirror into local store so the session hook has a user right away.
-    localSignUp(input);
-    return { ok: true, mode: "supabase", message: r.message };
+    localSignUp({
+      email: input.email,
+      displayName: input.displayName,
+      dob: input.dob,
+    });
+    return {
+      ok: true,
+      mode: "supabase",
+      needsEmailConfirmation: r.needsEmailConfirmation,
+    };
   }
-  const r = localSignUp(input);
+  const r = localSignUp({
+    email: input.email,
+    displayName: input.displayName,
+    dob: input.dob,
+  });
   if (!r.ok) return r;
   return { ok: true, mode: "local" };
 }
 
-/** Universal sign-in: magic-link in Supabase mode, local otherwise. */
-export async function signInUniversal(
-  email: string,
-): Promise<
-  | { ok: true; mode: AuthMode; message?: string }
+/** Universal sign-in: email+password in Supabase mode, local otherwise. */
+export async function signInUniversal(input: {
+  email: string;
+  password: string;
+}): Promise<
+  | { ok: true; mode: AuthMode }
   | { ok: false; error: string }
 > {
   if (authMode() === "supabase") {
-    const r = await sendMagicLink({ email });
+    const r = await signInWithPassword(input);
     if (!r.ok) return r;
-    return { ok: true, mode: "supabase", message: r.message };
+    return { ok: true, mode: "supabase" };
   }
-  const r = localSignIn(email);
+  const r = localSignIn(input.email);
   if (!r.ok) return r;
   return { ok: true, mode: "local" };
 }
