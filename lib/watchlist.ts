@@ -4,6 +4,25 @@ import { STOCKS, Stock, getStock, pctReturn, price } from "./stocks";
 
 const KEY = (email: string) => `tv.watchlist.${email}`;
 
+// Phase 30 — fire-and-forget cloud mirrors. Lazy import to keep this
+// module SSR-safe and to avoid eager evaluation of the supabase client.
+async function cloudAdd(symbol: string) {
+  try {
+    const { addWatchlistCloud } = await import("./supabase/watchlist-sync");
+    await addWatchlistCloud(symbol);
+  } catch {
+    // best-effort
+  }
+}
+async function cloudRemove(symbol: string) {
+  try {
+    const { removeWatchlistCloud } = await import("./supabase/watchlist-sync");
+    await removeWatchlistCloud(symbol);
+  } catch {
+    // best-effort
+  }
+}
+
 export function getWatchlist(email: string): string[] {
   if (typeof window === "undefined") return [];
   try {
@@ -23,12 +42,14 @@ export function addToWatchlist(email: string, symbol: string): boolean {
   if (cur.includes(symbol)) return true;
   cur.push(symbol);
   localStorage.setItem(KEY(email), JSON.stringify(cur));
+  void cloudAdd(symbol);
   return true;
 }
 
 export function removeFromWatchlist(email: string, symbol: string) {
   const cur = getWatchlist(email).filter((s) => s !== symbol);
   localStorage.setItem(KEY(email), JSON.stringify(cur));
+  void cloudRemove(symbol);
 }
 
 export type WatchlistRow = {

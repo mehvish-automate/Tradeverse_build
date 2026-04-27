@@ -354,6 +354,20 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["orders"]["Insert"]>;
       };
+
+      watchlist_items: {
+        Row: {
+          user_id: string;
+          symbol: string;
+          added_at: string;
+        };
+        Insert: {
+          user_id: string;
+          symbol: string;
+          added_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["watchlist_items"]["Insert"]>;
+      };
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };

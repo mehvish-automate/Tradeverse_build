@@ -184,6 +184,14 @@ create table if not exists public.orders (
   fills            jsonb not null default '[]'::jsonb
 );
 
+-- --- Watchlist (Phase 30) ---
+create table if not exists public.watchlist_items (
+  user_id     uuid not null references auth.users on delete cascade,
+  symbol      text not null,
+  added_at    timestamptz not null default now(),
+  primary key (user_id, symbol)
+);
+
 -- ============================================================================
 -- Part 2 — Row-Level Security + policies
 -- ============================================================================
@@ -205,6 +213,7 @@ alter table public.portfolio_holdings  enable row level security;
 alter table public.paper_accounts      enable row level security;
 alter table public.paper_holdings      enable row level security;
 alter table public.orders              enable row level security;
+alter table public.watchlist_items     enable row level security;
 
 -- Idempotency helper: drop then recreate each policy.
 drop policy if exists "profiles world-readable"        on public.profiles;
@@ -241,6 +250,7 @@ drop policy if exists "holdings scoped to owner"       on public.portfolio_holdi
 drop policy if exists "own paper account"              on public.paper_accounts;
 drop policy if exists "own paper holdings"             on public.paper_holdings;
 drop policy if exists "own orders"                     on public.orders;
+drop policy if exists "own watchlist"                  on public.watchlist_items;
 
 -- profiles
 create policy "profiles world-readable"
@@ -381,6 +391,11 @@ create policy "own orders"
   on public.orders for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
+-- watchlist
+create policy "own watchlist"
+  on public.watchlist_items for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
 -- ============================================================================
 -- Part 3 — Auth trigger (seed profile + stats + paper account on signup)
 -- ============================================================================
@@ -422,3 +437,4 @@ create index if not exists floor_posts_club_idx         on public.floor_posts(cl
 create index if not exists orders_user_idx              on public.orders(user_id, placed_at desc);
 create index if not exists portfolios_user_idx          on public.portfolios(user_id, created_at desc);
 create index if not exists trade_floor_members_user_idx on public.trade_floor_members(user_id);
+create index if not exists watchlist_user_idx           on public.watchlist_items(user_id, added_at desc);

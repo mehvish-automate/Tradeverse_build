@@ -13,6 +13,10 @@ import {
   pullPaperState,
 } from "@/lib/supabase/paper-sync";
 import { pullPortfolios } from "@/lib/supabase/portfolio-sync";
+import {
+  pullWatchlist,
+  pushLocalWatchlist,
+} from "@/lib/supabase/watchlist-sync";
 import { useSession } from "@/lib/session";
 
 /**
@@ -42,10 +46,15 @@ export function SyncRuntime() {
     };
 
     // First-load only: pull paper-trading state + strategy portfolios
-    // down so a phone session shows up on desktop. Local stores stay
-    // authoritative thereafter.
+    // + watchlist down so a phone session shows up on desktop. Local
+    // stores stay authoritative thereafter. Watchlist also pushes any
+    // local-only symbols up to reconcile both directions.
     void pullPaperState();
     void pullPortfolios();
+    void (async () => {
+      await pullWatchlist();
+      await pushLocalWatchlist();
+    })();
     void run();
 
     const iv = setInterval(() => {
