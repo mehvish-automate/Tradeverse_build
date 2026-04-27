@@ -17,6 +17,12 @@ import {
   pullWatchlist,
   pushLocalWatchlist,
 } from "@/lib/supabase/watchlist-sync";
+import {
+  mirrorEarnedBadges,
+  pullBadgeUnlocks,
+  pullQuestClaims,
+  pullStreakFreezes,
+} from "@/lib/supabase/progress-sync";
 import { useSession } from "@/lib/session";
 
 /**
@@ -43,18 +49,25 @@ export function SyncRuntime() {
       await pullDailyResults();
       await syncDailyResults();
       await mirrorAccountState();
+      // Idempotent — only inserts badges that aren't already in
+      // badge_unlocks. Cheap to re-run on every tick.
+      await mirrorEarnedBadges();
     };
 
     // First-load only: pull paper-trading state + strategy portfolios
-    // + watchlist down so a phone session shows up on desktop. Local
-    // stores stay authoritative thereafter. Watchlist also pushes any
-    // local-only symbols up to reconcile both directions.
+    // + watchlist + quest claims + badge unlocks + streak freezes down
+    // so a phone session shows up on desktop. Local stores stay
+    // authoritative thereafter. Watchlist also pushes any local-only
+    // symbols up to reconcile both directions.
     void pullPaperState();
     void pullPortfolios();
     void (async () => {
       await pullWatchlist();
       await pushLocalWatchlist();
     })();
+    void pullQuestClaims();
+    void pullBadgeUnlocks();
+    void pullStreakFreezes();
     void run();
 
     const iv = setInterval(() => {

@@ -368,6 +368,38 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["watchlist_items"]["Insert"]>;
       };
+
+      quest_claims: {
+        Row: {
+          user_id: string;
+          quest_id: string;
+          window_key: string;
+          reward_xp: number;
+          claimed_at: string;
+        };
+        Insert: {
+          user_id: string;
+          quest_id: string;
+          window_key: string;
+          reward_xp?: number;
+          claimed_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["quest_claims"]["Insert"]>;
+      };
+
+      badge_unlocks: {
+        Row: {
+          user_id: string;
+          badge_id: string;
+          earned_at: string;
+        };
+        Insert: {
+          user_id: string;
+          badge_id: string;
+          earned_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["badge_unlocks"]["Insert"]>;
+      };
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };

@@ -381,5 +381,18 @@ export function claimQuest(
       // fall through — quest is marked claimed regardless
     }
   }
+
+  // Phase 31 — fire-and-forget cloud mirror. key shape is "questId|windowKey".
+  void (async () => {
+    try {
+      const [questId, windowKey] = key.split("|");
+      if (!questId || !windowKey) return;
+      const { mirrorQuestClaim } = await import("./supabase/progress-sync");
+      await mirrorQuestClaim({ questId, windowKey, rewardXp });
+    } catch {
+      // best-effort
+    }
+  })();
+
   return { ok: true };
 }
