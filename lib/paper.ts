@@ -17,6 +17,25 @@
 import { bookAtPrice, L2Level } from "./orderbook";
 import { price } from "./stocks";
 
+// Phase 28 — fire-and-forget cloud mirrors. Imported lazily to keep
+// paper.ts SSR-safe and to avoid eager evaluation of the supabase client.
+async function cloudMirrorOrder(order: Order) {
+  try {
+    const { mirrorOrder } = await import("./supabase/paper-sync");
+    await mirrorOrder(order);
+  } catch {
+    // Cloud mirror is best-effort; localStorage stays authoritative.
+  }
+}
+async function cloudMirrorAccount() {
+  try {
+    const { mirrorAccountState } = await import("./supabase/paper-sync");
+    await mirrorAccountState();
+  } catch {
+    // best-effort
+  }
+}
+
 const STARTING_CASH = 1_000_000;
 
 export type Holding = { symbol: string; shares: number; avgPrice: number };
@@ -86,6 +105,7 @@ function saveAccount(email: string, acct: PaperAccount) {
 export function resetAccount(email: string) {
   saveAccount(email, emptyAccount());
   localStorage.setItem(ORDERS_KEY(email), "[]");
+  void cloudMirrorAccount();
 }
 
 // --- Orders ---
@@ -114,7 +134,14 @@ export function openOrders(email: string): Order[] {
 }
 
 function genId(): string {
-  return Math.random().toString(36).slice(2, 12);
+  // UUID so local ids match the orders.id uuid column in Supabase.
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  // Fallback (older runtimes / SSR) — shape-compatible with uuid v4.
+  const hex = (n: number) =>
+    Array.from({ length: n }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+  return `${hex(8)}-${hex(4)}-4${hex(3)}-${((Math.random() * 4) | 8).toString(16)}${hex(3)}-${hex(12)}`;
 }
 
 function clampQty(n: number): number {
@@ -194,6 +221,7 @@ export function placeOrder(
   const all = readOrders(email);
   all.push(order);
   writeOrders(email, all);
+  void cloudMirrorOrder(order);
 
   // Deterministic-but-feels-real latency.
   const latency = 250 + Math.floor(Math.random() * 250);
@@ -213,6 +241,7 @@ export function cancelOrder(email: string, orderId: string): boolean {
   o.status = "cancelled";
   o.lastUpdated = Date.now();
   writeOrders(email, all);
+  void cloudMirrorOrder(o);
   return true;
 }
 
@@ -299,6 +328,8 @@ function finalizeOrder(
   order.status = totalFilled >= order.qty ? "filled" : "partial";
   order.lastUpdated = Date.now();
   writeOrders(email, all);
+  void cloudMirrorOrder(order);
+  void cloudMirrorAccount();
   return order;
 }
 

@@ -8,6 +8,10 @@ import {
   syncDailyResults,
   syncProfile,
 } from "@/lib/supabase/sync";
+import {
+  mirrorAccountState,
+  pullPaperState,
+} from "@/lib/supabase/paper-sync";
 import { useSession } from "@/lib/session";
 
 /**
@@ -33,8 +37,12 @@ export function SyncRuntime() {
       await syncProfile();
       await pullDailyResults();
       await syncDailyResults();
+      await mirrorAccountState();
     };
 
+    // First-load only: pull paper-trading state down so a phone session
+    // shows up on desktop. Local engine stays authoritative thereafter.
+    void pullPaperState();
     void run();
 
     const iv = setInterval(() => {
