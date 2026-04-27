@@ -206,13 +206,15 @@ export async function signInUniversal(input: {
     const r = await signInWithPassword(input);
     if (!r.ok) return r;
 
-    // Mirror into local session so useSession / RequireAuth can read the user.
-    // Try existing local record first (same device as signup). If not found,
-    // fetch metadata from Supabase and create a local record (new device).
+    // Hydrate the local session from the canonical profiles row. This
+    // gives a fresh device the real display_name + dob + home_institute
+    // + onboarded flag — no more "2000-01-01" placeholder. If the pull
+    // fails (no profile row, offline, etc), fall back to user_metadata.
     const email = input.email.trim().toLowerCase();
-    const localTry = localSignIn(email);
-    if (!localTry.ok) {
-      try {
+    try {
+      const { pullProfile } = await import("./supabase/sync");
+      const ok = await pullProfile();
+      if (!ok) {
         const supabase = getBrowserSupabase();
         if (supabase) {
           const { data } = await supabase.auth.getUser();
@@ -223,9 +225,9 @@ export async function signInUniversal(input: {
             localSignUp({ email, displayName, dob });
           }
         }
-      } catch {
-        // best-effort — UI still works with Supabase session
       }
+    } catch {
+      // best-effort — Supabase session still drives auth even if local mirror fails
     }
 
     return { ok: true, mode: "supabase" };

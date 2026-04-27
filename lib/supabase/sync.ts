@@ -8,7 +8,7 @@
 import { getBrowserSupabase } from "./client";
 import { getProgress } from "../progress";
 import { getCurrentUser } from "../session";
-import { getHomeInstitute } from "../onboarding";
+import { getHomeInstitute, hasOnboarded } from "../onboarding";
 
 const LAST_SYNC_KEY = (email: string) => `tv.sync.lastResult.${email}`;
 
@@ -34,7 +34,7 @@ export async function syncProfile(): Promise<boolean> {
     display_name: local.displayName,
     dob: local.dob,
     home_institute: getHomeInstitute(local.email),
-    onboarded: true,
+    onboarded: hasOnboarded(local.email),
   };
   const { error: profErr } = await (supabase.from("profiles") as unknown as {
     upsert: (row: unknown) => Promise<{ error: { message: string } | null }>;
@@ -167,6 +167,88 @@ export async function pullDailyResults(): Promise<number> {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify(store));
   }
   return added;
+}
+
+/**
+ * Pull the canonical profile row from Supabase and hydrate localStorage:
+ *   - tv.users[] gets a row matching the cloud display_name + dob
+ *   - tv.session is set to the email so useSession picks up the user
+ *   - tv.homeInstitute.<email> reflects the cloud home_institute
+ *   - tv.onboarded.<email> reflects the cloud onboarded flag
+ *
+ * Used by sign-in (so a fresh device gets the real profile, not just
+ * placeholder data from user_metadata) and by the first-load sync (so
+ * profile edits made on another device propagate back).
+ *
+ * Best-effort: silently exits when Supabase is offline or no profile row.
+ */
+export async function pullProfile(): Promise<boolean> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return false;
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return false;
+
+  type Row = {
+    email: string;
+    display_name: string;
+    dob: string;
+    home_institute: string | null;
+    onboarded: boolean;
+  };
+  const res = await (supabase.from("profiles") as unknown as {
+    select: (cols: string) => {
+      eq: (
+        col: string,
+        val: string,
+      ) => {
+        maybeSingle: () => Promise<{
+          data: Row | null;
+          error: { message: string } | null;
+        }>;
+      };
+    };
+  })
+    .select("email, display_name, dob, home_institute, onboarded")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+  if (res.error || !res.data) return false;
+
+  const row = res.data;
+  const email = (row.email || auth.user.email || "").trim().toLowerCase();
+  if (!email) return false;
+
+  // Upsert into tv.users and set tv.session.
+  type StoredUser = {
+    email: string;
+    displayName: string;
+    dob: string;
+    createdAt: number;
+  };
+  let users: StoredUser[] = [];
+  try {
+    users = JSON.parse(localStorage.getItem("tv.users") || "[]") as StoredUser[];
+  } catch {
+    users = [];
+  }
+  const idx = users.findIndex((u) => u.email === email);
+  const merged: StoredUser = {
+    email,
+    displayName: row.display_name,
+    dob: row.dob,
+    createdAt: idx >= 0 ? users[idx]!.createdAt : Date.now(),
+  };
+  if (idx >= 0) users[idx] = merged;
+  else users.push(merged);
+  localStorage.setItem("tv.users", JSON.stringify(users));
+  localStorage.setItem("tv.session", email);
+
+  if (row.home_institute) {
+    localStorage.setItem(`tv.homeInstitute.${email}`, row.home_institute);
+  }
+  if (row.onboarded) {
+    localStorage.setItem(`tv.onboarded.${email}`, "1");
+  }
+  return true;
 }
 
 // --- Helpers ---

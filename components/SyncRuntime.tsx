@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { supabaseConfigured } from "@/lib/supabase/client";
 import {
   pullDailyResults,
+  pullProfile,
   syncDailyResults,
   syncProfile,
 } from "@/lib/supabase/sync";
@@ -62,6 +63,7 @@ export function SyncRuntime() {
     // streak freezes down so a phone session shows up on desktop.
     // Local stores stay authoritative thereafter. Watchlist also pushes
     // any local-only symbols up to reconcile both directions.
+    void pullProfile();
     void pullPaperState();
     void pullPortfolios();
     void pullMyTradeFloors();
