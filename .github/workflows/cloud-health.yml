@@ -1,0 +1,45 @@
+# Cloud health — cron-driven probe of the Supabase backend.
+#
+# Runs scripts/check-cloud.mjs every 6 hours and on manual dispatch.
+# Failure modes (exit codes from the script):
+#   2 — schema not applied (missing tables)
+#   3 — unexpected per-table errors
+#   4 — Supabase host unreachable (project paused or wrong URL)
+#
+# Secrets required (Settings → Secrets and variables → Actions):
+#   NEXT_PUBLIC_SUPABASE_URL
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY
+#
+# Note: GitHub Actions cron schedules only fire on the default branch.
+# This workflow becomes active once merged to main.
+
+name: Cloud health
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Probe Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install probe dependency
+        run: npm install --no-audit --no-fund --no-save "@supabase/supabase-js@^2.104.1"
+
+      - name: Run cloud probe
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: node scripts/check-cloud.mjs
