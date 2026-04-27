@@ -15,6 +15,7 @@ import {
 import { pullPortfolios } from "@/lib/supabase/portfolio-sync";
 import { pullMyTradeFloors } from "@/lib/supabase/tradefloor-sync";
 import { pullMyClubs } from "@/lib/supabase/club-sync";
+import { pullMyFests } from "@/lib/supabase/fest-sync";
 import {
   pullWatchlist,
   pushLocalWatchlist,
@@ -65,6 +66,7 @@ export function SyncRuntime() {
     void pullPortfolios();
     void pullMyTradeFloors();
     void pullMyClubs();
+    void pullMyFests();
     void (async () => {
       await pullWatchlist();
       await pushLocalWatchlist();

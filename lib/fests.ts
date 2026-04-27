@@ -200,6 +200,13 @@ export function createFest(input: {
   if (!my.includes(fest.id)) my.push(fest.id);
   writeMyFests(input.creator.email, my);
 
+  void (async () => {
+    try {
+      const { mirrorFest } = await import("./supabase/fest-sync");
+      await mirrorFest(fest);
+    } catch { /* best-effort */ }
+  })();
+
   return { ok: true, fest };
 }
 
@@ -223,6 +230,13 @@ export function joinFest(
   const my = readMyFests(user.email);
   if (!my.includes(fest.id)) my.push(fest.id);
   writeMyFests(user.email, my);
+
+  void (async () => {
+    try {
+      const { mirrorJoinFest } = await import("./supabase/fest-sync");
+      await mirrorJoinFest(fest.id);
+    } catch { /* best-effort */ }
+  })();
 
   return { ok: true, fest };
 }
