@@ -12,6 +12,7 @@ import {
   mirrorAccountState,
   pullPaperState,
 } from "@/lib/supabase/paper-sync";
+import { pullPortfolios } from "@/lib/supabase/portfolio-sync";
 import { useSession } from "@/lib/session";
 
 /**
@@ -40,9 +41,11 @@ export function SyncRuntime() {
       await mirrorAccountState();
     };
 
-    // First-load only: pull paper-trading state down so a phone session
-    // shows up on desktop. Local engine stays authoritative thereafter.
+    // First-load only: pull paper-trading state + strategy portfolios
+    // down so a phone session shows up on desktop. Local stores stay
+    // authoritative thereafter.
     void pullPaperState();
+    void pullPortfolios();
     void run();
 
     const iv = setInterval(() => {

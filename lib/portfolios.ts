@@ -83,7 +83,32 @@ export function getPortfolio(
 }
 
 function genId(): string {
-  return Math.random().toString(36).slice(2, 8) + Date.now().toString(36);
+  // UUID so local ids match the portfolios.id uuid column in Supabase.
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  const hex = (n: number) =>
+    Array.from({ length: n }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+  return `${hex(8)}-${hex(4)}-4${hex(3)}-${((Math.random() * 4) | 8).toString(16)}${hex(3)}-${hex(12)}`;
+}
+
+// Phase 29 — fire-and-forget cloud mirrors. Lazy import to keep this
+// module SSR-safe and to avoid eager evaluation of the supabase client.
+async function cloudMirrorPortfolio(p: StrategyPortfolio) {
+  try {
+    const { mirrorPortfolio } = await import("./supabase/portfolio-sync");
+    await mirrorPortfolio(p);
+  } catch {
+    // best-effort
+  }
+}
+async function cloudDeletePortfolio(id: string) {
+  try {
+    const { deletePortfolioCloud } = await import("./supabase/portfolio-sync");
+    await deletePortfolioCloud(id);
+  } catch {
+    // best-effort
+  }
 }
 
 export function createPortfolio(
@@ -124,6 +149,7 @@ export function createPortfolio(
   const all = read(email);
   all.push(portfolio);
   write(email, all);
+  void cloudMirrorPortfolio(portfolio);
   return { ok: true, portfolio };
 }
 
@@ -162,12 +188,14 @@ export function updatePortfolio(
 
   all[idx] = { ...all[idx], ...patch };
   write(email, all);
+  void cloudMirrorPortfolio(all[idx]);
   return { ok: true };
 }
 
 export function deletePortfolio(email: string, id: string) {
   const all = read(email).filter((p) => p.id !== id);
   write(email, all);
+  void cloudDeletePortfolio(id);
 }
 
 // --- Valuation ---
