@@ -1,6 +1,7 @@
 "use client";
 
 import { getProgress } from "./progress";
+import { lookupScore } from "./supabase/scores-sync";
 
 export type TradeFloorMember = {
   email: string;
@@ -148,10 +149,10 @@ export type LeaderboardRow = {
 /**
  * Weekly leaderboard for a trade floor.
  *
- * V1 caveat: each browser only holds its own user's progress in
- * localStorage, so the "live" numbers you see here mix your real score
- * with deterministic demo scores for the other members. Phase 5 replaces
- * this with server-backed scores.
+ * Real cloud scores (from daily_results + user_stats) are used when
+ * a prior pullScoresFor() call has cached them for the current week.
+ * Falls back to a deterministic demo seed when there's no cloud row
+ * (offline mode, or member hasn't played any cloud-mirrored runs yet).
  */
 export function weeklyLeaderboard(
   tradeFloor: TradeFloor,
@@ -159,6 +160,7 @@ export function weeklyLeaderboard(
 ): LeaderboardRow[] {
   const weekStart = currentWeekStart();
   const weekStartMs = new Date(weekStart).getTime();
+  const today = new Date().toISOString().slice(0, 10);
 
   return tradeFloor.members
     .map((m) => {
@@ -177,6 +179,18 @@ export function weeklyLeaderboard(
           plays: thisWeek.length,
           streak: p.streak,
           isYou: true,
+        };
+      }
+      const cloud = lookupScore(m.email, weekStart, today);
+      if (cloud) {
+        return {
+          email: m.email,
+          displayName: m.displayName,
+          xp: cloud.xp,
+          correct: cloud.correct,
+          plays: cloud.plays,
+          streak: cloud.streak,
+          isYou: false,
         };
       }
       // Deterministic demo score from email so ranks are stable.

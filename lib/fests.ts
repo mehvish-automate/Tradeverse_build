@@ -8,6 +8,7 @@
 
 import { getClub, getInstitute } from "./clubs";
 import { getProgress } from "./progress";
+import { lookupScore } from "./supabase/scores-sync";
 
 export type FestEventType =
   | "paper-trading"
@@ -274,9 +275,10 @@ export type FestLeaderRow = {
 };
 
 /**
- * Real participants' scores come from their own localStorage when the
- * data exists; otherwise we fill them with a deterministic demo score
- * seeded by (fest id, email) so ranks are stable. Backend swap-in later.
+ * Real cloud scores (from daily_results aggregated over the fest
+ * window) are used when pullScoresFor() has cached them for this fest.
+ * Viewer always reads local progress. Falls back to a deterministic
+ * demo seed when no cloud row is cached.
  */
 export function festLeaderboard(
   fest: Fest,
@@ -299,6 +301,16 @@ export function festLeaderboard(
           xp,
           plays,
           isYou: true,
+        };
+      }
+      const cloud = lookupScore(p.email, fest.startDate, fest.endDate);
+      if (cloud) {
+        return {
+          handle: `@${p.displayName}`,
+          email: p.email,
+          xp: cloud.xp,
+          plays: cloud.plays,
+          isYou: false,
         };
       }
       let seed = 13;

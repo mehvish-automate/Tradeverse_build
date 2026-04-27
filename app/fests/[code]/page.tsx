@@ -22,6 +22,7 @@ import {
 } from "@/lib/officialTournaments";
 import { useSession } from "@/lib/session";
 import { useRealtimeLeaderboards } from "@/lib/supabase/realtime";
+import { pullScoresFor } from "@/lib/supabase/scores-sync";
 
 export default function FestPage() {
   return (
@@ -88,7 +89,23 @@ function FestInner() {
   const inst = club ? getInstitute(club.instituteId) : null;
   const status = festStatus(fest);
   const live = useRealtimeLeaderboards();
-  void live.tick;
+  const [scoresTick, setScoresTick] = useState(0);
+
+  // Pull real cross-user XP for the fest window. Re-pulls on live.tick.
+  useEffect(() => {
+    if (!fest) return;
+    const emails = fest.participants.map((p) => p.email);
+    let cancelled = false;
+    void (async () => {
+      await pullScoresFor(emails, fest.startDate, fest.endDate);
+      if (!cancelled) setScoresTick((t) => t + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fest, live.tick]);
+
+  void scoresTick;
   const rows = festLeaderboard(fest, user.email);
   const myRank = rows.findIndex((r) => r.email === user.email) + 1;
 

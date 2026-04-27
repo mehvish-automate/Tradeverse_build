@@ -16,6 +16,7 @@ import {
 } from "@/lib/tradeFloors";
 import { useSession } from "@/lib/session";
 import { useRealtimeLeaderboards } from "@/lib/supabase/realtime";
+import { pullScoresFor } from "@/lib/supabase/scores-sync";
 
 export default function TradeFloorPage() {
   return (
@@ -80,8 +81,26 @@ function TradeFloorInner() {
   }
 
   const live = useRealtimeLeaderboards();
-  // `live.tick` referenced to keep the realtime stream load-bearing.
-  void live.tick;
+  const [scoresTick, setScoresTick] = useState(0);
+
+  // Pull real cross-user scores for the current week and re-render.
+  // Re-runs whenever a daily_results row lands anywhere (live.tick).
+  useEffect(() => {
+    if (!tradeFloor) return;
+    const emails = tradeFloor.members.map((m) => m.email);
+    const since = currentWeekStart();
+    const until = new Date().toISOString().slice(0, 10);
+    let cancelled = false;
+    void (async () => {
+      await pullScoresFor(emails, since, until);
+      if (!cancelled) setScoresTick((t) => t + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tradeFloor, live.tick]);
+
+  void scoresTick;
   const rows = weeklyLeaderboard(tradeFloor, user.email);
   const myRank = rows.findIndex((r) => r.isYou) + 1;
 
