@@ -112,6 +112,32 @@ export async function signInWithPassword(input: {
   return { ok: true, needsEmailConfirmation: false };
 }
 
+/**
+ * Send a password-reset email. Supabase emails the user a link that
+ * lands on /auth/callback?code=...&type=recovery, which exchanges the
+ * code and redirects to /auth/reset-password for the new-password form.
+ */
+export async function sendPasswordReset(
+  email: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const trimmed = email.trim().toLowerCase();
+  const emailErr = validateEmail(trimmed);
+  if (emailErr) return { ok: false, error: emailErr };
+
+  const supabase = getBrowserSupabase();
+  if (!supabase) return { ok: false, error: "Auth backend not configured." };
+
+  const redirectTo =
+    (typeof window !== "undefined" ? window.location.origin : "") +
+    "/auth/callback?next=/auth/reset-password&type=recovery";
+
+  const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
+    redirectTo,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 /** Returns the current Supabase session's user, or null. */
 export async function supabaseUser() {
   const supabase = getBrowserSupabase();
