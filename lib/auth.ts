@@ -205,6 +205,29 @@ export async function signInUniversal(input: {
   if (authMode() === "supabase") {
     const r = await signInWithPassword(input);
     if (!r.ok) return r;
+
+    // Mirror into local session so useSession / RequireAuth can read the user.
+    // Try existing local record first (same device as signup). If not found,
+    // fetch metadata from Supabase and create a local record (new device).
+    const email = input.email.trim().toLowerCase();
+    const localTry = localSignIn(email);
+    if (!localTry.ok) {
+      try {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          const { data } = await supabase.auth.getUser();
+          if (data.user) {
+            const meta = (data.user.user_metadata ?? {}) as Record<string, unknown>;
+            const displayName = (meta.display_name as string) || email.split("@")[0];
+            const dob = (meta.dob as string) || "2000-01-01";
+            localSignUp({ email, displayName, dob });
+          }
+        }
+      } catch {
+        // best-effort — UI still works with Supabase session
+      }
+    }
+
     return { ok: true, mode: "supabase" };
   }
   const r = localSignIn(input.email);
