@@ -106,7 +106,7 @@ function writeMembership(email: string, ids: string[]) {
 }
 
 function genId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return crypto.randomUUID();
 }
 
 export function listClubs(): Club[] {
@@ -166,6 +166,13 @@ export function createClub(input: {
   if (!mem.includes(club.id)) mem.push(club.id);
   writeMembership(input.creator.email, mem);
 
+  void (async () => {
+    try {
+      const { mirrorClub } = await import("./supabase/club-sync");
+      await mirrorClub(club);
+    } catch { /* best-effort */ }
+  })();
+
   return { ok: true, club };
 }
 
@@ -194,6 +201,13 @@ export function joinClub(
   if (!mem.includes(club.id)) mem.push(club.id);
   writeMembership(user.email, mem);
 
+  void (async () => {
+    try {
+      const { mirrorJoinClub } = await import("./supabase/club-sync");
+      await mirrorJoinClub(club.id);
+    } catch { /* best-effort */ }
+  })();
+
   return { ok: true, club };
 }
 
@@ -205,5 +219,13 @@ export function leaveClub(clubId: string, email: string): boolean {
   writeClubs(all);
   const mem = readMembership(email).filter((id) => id !== clubId);
   writeMembership(email, mem);
+
+  void (async () => {
+    try {
+      const { mirrorLeaveClub } = await import("./supabase/club-sync");
+      await mirrorLeaveClub(clubId);
+    } catch { /* best-effort */ }
+  })();
+
   return true;
 }
