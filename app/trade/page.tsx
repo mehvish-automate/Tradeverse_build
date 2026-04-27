@@ -20,6 +20,8 @@ import {
   tickOpenOrders,
 } from "@/lib/paper";
 import { useSession } from "@/lib/session";
+import { reconcilePaperFromCloud } from "@/lib/supabase/paper-sync";
+import { useRealtimePaper } from "@/lib/supabase/realtime";
 import { STOCKS, price } from "@/lib/stocks";
 
 export default function TradePage() {
@@ -66,6 +68,22 @@ function Inner() {
     }, 3000);
     return () => clearInterval(iv);
   }, [user, refresh]);
+
+  // Cross-device realtime — when an order or holding changes anywhere
+  // in cloud, reconcile down and re-render so a fill on the phone
+  // appears here within a second.
+  const live = useRealtimePaper();
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void (async () => {
+      await reconcilePaperFromCloud();
+      if (!cancelled) refresh();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, live.tick, refresh]);
 
   if (!user || !book) return null;
 

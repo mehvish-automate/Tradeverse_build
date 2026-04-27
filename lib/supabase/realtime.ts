@@ -57,3 +57,18 @@ export function useRealtimeLeaderboards() {
 export function useRealtimeFloor() {
   return useRealtimeTable("floor_posts");
 }
+
+/**
+ * Paper-trading realtime — bumps when a row in `orders` or
+ * `paper_holdings` changes. Trade pages use this to re-pull cloud
+ * state so an order placed/filled on another device appears here
+ * within seconds (vs. the 60s SyncRuntime tick).
+ */
+export function useRealtimePaper(): { tick: number; connected: boolean } {
+  const orders = useRealtimeTable("orders");
+  const holdings = useRealtimeTable("paper_holdings");
+  return {
+    tick: orders.tick + holdings.tick,
+    connected: orders.connected || holdings.connected,
+  };
+}

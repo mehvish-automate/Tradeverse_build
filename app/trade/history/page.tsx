@@ -7,6 +7,8 @@ import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Order, listOrders, resetAccount } from "@/lib/paper";
 import { useSession } from "@/lib/session";
+import { reconcilePaperFromCloud } from "@/lib/supabase/paper-sync";
+import { useRealtimePaper } from "@/lib/supabase/realtime";
 
 export default function OrderHistoryPage() {
   return (
@@ -26,10 +28,26 @@ function Inner() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [tick, setTick] = useState(0);
 
+  const live = useRealtimePaper();
+
   useEffect(() => {
     if (!user) return;
     setOrders(listOrders(user.email));
   }, [user, tick]);
+
+  // Reconcile from cloud on every realtime tick so the history list
+  // reflects fills/cancels happening on other devices.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void (async () => {
+      await reconcilePaperFromCloud();
+      if (!cancelled) setTick((t) => t + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, live.tick]);
 
   if (!user) return null;
 

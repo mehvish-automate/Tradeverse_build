@@ -274,3 +274,159 @@ export async function pullPaperState(): Promise<{
 
   return result;
 }
+
+/**
+ * Phase 38 — realtime reconcile. Stronger than pullPaperState: when
+ * a `orders` or `paper_holdings` change lands via the realtime channel,
+ * cloud is authoritative. We overwrite the order rows we have locally
+ * (so a fill that happened on another device flips our `pending` →
+ * `filled`) and replace cash + holdings wholesale.
+ *
+ * Used only on realtime ticks. First-load still uses the conservative
+ * pullPaperState so a brand-new device doesn't clobber an in-progress
+ * local engine state.
+ */
+export async function reconcilePaperFromCloud(): Promise<{
+  ordersChanged: number;
+  accountChanged: boolean;
+}> {
+  const out = { ordersChanged: 0, accountChanged: false };
+  const supabase = getBrowserSupabase();
+  if (!supabase) return out;
+  const userId = await authedUserId();
+  if (!userId) return out;
+  const local = getCurrentUser();
+  if (!local) return out;
+
+  // 1. Account + holdings.
+  type AccountRow = { cash: number };
+  const accountRes = await (supabase.from("paper_accounts") as unknown as {
+    select: (cols: string) => {
+      eq: (
+        col: string,
+        val: string,
+      ) => {
+        maybeSingle: () => Promise<{
+          data: AccountRow | null;
+          error: { message: string } | null;
+        }>;
+      };
+    };
+  })
+    .select("cash")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  type HoldingRow = { symbol: string; shares: number; avg_price: number };
+  const holdingsRes = await (supabase.from("paper_holdings") as unknown as {
+    select: (cols: string) => {
+      eq: (
+        col: string,
+        val: string,
+      ) => Promise<{
+        data: HoldingRow[] | null;
+        error: { message: string } | null;
+      }>;
+    };
+  })
+    .select("symbol, shares, avg_price")
+    .eq("user_id", userId);
+
+  if (!accountRes.error && !holdingsRes.error && accountRes.data) {
+    const ACCT_KEY = `tv.paper.account.${local.email}`;
+    const raw = localStorage.getItem(ACCT_KEY);
+    const localAcct: PaperAccount | null = raw
+      ? (JSON.parse(raw) as PaperAccount)
+      : null;
+    const next: PaperAccount = {
+      cash: Number(accountRes.data.cash),
+      holdings: (holdingsRes.data ?? []).map((r) => ({
+        symbol: r.symbol,
+        shares: r.shares,
+        avgPrice: Number(r.avg_price),
+      })),
+      createdAt: localAcct?.createdAt ?? Date.now(),
+    };
+    localStorage.setItem(ACCT_KEY, JSON.stringify(next));
+    out.accountChanged = true;
+  }
+
+  // 2. Orders — overwrite by id; preserve any local-only rows (just-placed
+  //    on this tab whose insert hasn't acked yet).
+  type OrderRow = {
+    id: string;
+    symbol: string;
+    side: "buy" | "sell";
+    kind: "market" | "limit" | "stop" | "stop-limit";
+    qty: number;
+    filled_qty: number;
+    avg_fill_price: number;
+    limit_price: number | null;
+    stop_price: number | null;
+    status: Order["status"];
+    placed_at: string;
+    last_updated: string;
+    fills: unknown;
+  };
+  const ordersRes = await (supabase.from("orders") as unknown as {
+    select: (cols: string) => {
+      eq: (
+        col: string,
+        val: string,
+      ) => Promise<{ data: OrderRow[] | null; error: { message: string } | null }>;
+    };
+  })
+    .select(
+      "id, symbol, side, kind, qty, filled_qty, avg_fill_price, limit_price, stop_price, status, placed_at, last_updated, fills",
+    )
+    .eq("user_id", userId);
+
+  if (!ordersRes.error && ordersRes.data) {
+    const ORDERS_KEY = `tv.paper.orders.${local.email}`;
+    const localOrders = listOrders(local.email);
+    const localById = new Map(localOrders.map((o) => [o.id, o] as const));
+    const cloudById = new Map<string, Order>();
+    for (const row of ordersRes.data) {
+      cloudById.set(row.id, {
+        id: row.id,
+        symbol: row.symbol,
+        side: row.side,
+        kind: row.kind,
+        qty: row.qty,
+        filledQty: row.filled_qty,
+        avgFillPrice: Number(row.avg_fill_price),
+        limitPrice: row.limit_price ?? undefined,
+        stopPrice: row.stop_price ?? undefined,
+        status: row.status,
+        placedAt: new Date(row.placed_at).getTime(),
+        lastUpdated: new Date(row.last_updated).getTime(),
+        fills: Array.isArray(row.fills) ? (row.fills as Order["fills"]) : [],
+      });
+    }
+    // Merge: cloud wins for shared ids, local-only ids stay (just placed,
+    // mirror still in-flight). Count "changed" = ids whose status or
+    // fills differ from local.
+    const merged: Order[] = [];
+    let changed = 0;
+    const seen = new Set<string>();
+    for (const [id, cloudO] of cloudById) {
+      const localO = localById.get(id);
+      if (
+        !localO ||
+        localO.status !== cloudO.status ||
+        localO.filledQty !== cloudO.filledQty
+      ) {
+        changed++;
+      }
+      merged.push(cloudO);
+      seen.add(id);
+    }
+    for (const localO of localOrders) {
+      if (!seen.has(localO.id)) merged.push(localO);
+    }
+    localStorage.setItem(ORDERS_KEY, JSON.stringify(merged));
+    out.ordersChanged = changed;
+  }
+
+  return out;
+}
