@@ -13,6 +13,7 @@ import {
   pullPaperState,
 } from "@/lib/supabase/paper-sync";
 import { pullPortfolios } from "@/lib/supabase/portfolio-sync";
+import { pullMyTradeFloors } from "@/lib/supabase/tradefloor-sync";
 import {
   pullWatchlist,
   pushLocalWatchlist,
@@ -55,12 +56,13 @@ export function SyncRuntime() {
     };
 
     // First-load only: pull paper-trading state + strategy portfolios
-    // + watchlist + quest claims + badge unlocks + streak freezes down
-    // so a phone session shows up on desktop. Local stores stay
-    // authoritative thereafter. Watchlist also pushes any local-only
-    // symbols up to reconcile both directions.
+    // + trade floors + watchlist + quest claims + badge unlocks +
+    // streak freezes down so a phone session shows up on desktop.
+    // Local stores stay authoritative thereafter. Watchlist also pushes
+    // any local-only symbols up to reconcile both directions.
     void pullPaperState();
     void pullPortfolios();
+    void pullMyTradeFloors();
     void (async () => {
       await pullWatchlist();
       await pushLocalWatchlist();
