@@ -48,7 +48,7 @@ function write(clubId: string, posts: Post[]) {
 }
 
 function genId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return crypto.randomUUID();
 }
 
 function hash(s: string): number {
@@ -181,6 +181,14 @@ export function createPost(input: {
   const all = read(input.clubId);
   all.push(post);
   write(input.clubId, all);
+
+  void (async () => {
+    try {
+      const { mirrorPost } = await import("./supabase/floor-sync");
+      await mirrorPost(post);
+    } catch { /* best-effort */ }
+  })();
+
   return { ok: true, post };
 }
 
@@ -190,6 +198,14 @@ export function deletePost(clubId: string, postId: string, email: string): boole
   if (!post) return false;
   if (post.email !== email) return false; // only author
   write(clubId, all.filter((p) => p.id !== postId));
+
+  void (async () => {
+    try {
+      const { mirrorDeletePost } = await import("./supabase/floor-sync");
+      await mirrorDeletePost(postId);
+    } catch { /* best-effort */ }
+  })();
+
   return true;
 }
 
@@ -210,6 +226,13 @@ export function toggleReaction(
   if (!post.reactions[emoji]) post.reactions[emoji] = [];
   post.reactions[emoji].push(email);
   write(clubId, all);
+
+  void (async () => {
+    try {
+      const { mirrorReaction } = await import("./supabase/floor-sync");
+      await mirrorReaction(postId, emoji);
+    } catch { /* best-effort */ }
+  })();
 }
 
 export function clearReaction(clubId: string, postId: string, email: string) {
@@ -220,6 +243,13 @@ export function clearReaction(clubId: string, postId: string, email: string) {
     post.reactions[k] = (post.reactions[k] || []).filter((e) => e !== email);
   }
   write(clubId, all);
+
+  void (async () => {
+    try {
+      const { mirrorClearReaction } = await import("./supabase/floor-sync");
+      await mirrorClearReaction(postId);
+    } catch { /* best-effort */ }
+  })();
 }
 
 export function myReaction(post: Post, email: string): ReactionEmoji | null {
@@ -241,14 +271,23 @@ export function addComment(
   const all = read(clubId);
   const post = all.find((p) => p.id === postId);
   if (!post) return { ok: false, error: "Post not found." };
-  post.comments.push({
+  const comment: Comment = {
     id: genId(),
     email: author.email,
     displayName: author.displayName,
     body: trimmed,
     ts: Date.now(),
-  });
+  };
+  post.comments.push(comment);
   write(clubId, all);
+
+  void (async () => {
+    try {
+      const { mirrorComment } = await import("./supabase/floor-sync");
+      await mirrorComment(postId, comment);
+    } catch { /* best-effort */ }
+  })();
+
   return { ok: true };
 }
 

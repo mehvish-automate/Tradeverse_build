@@ -22,7 +22,7 @@ import {
 } from "@/lib/floor";
 import { useSession } from "@/lib/session";
 import { useRealtimeFloor } from "@/lib/supabase/realtime";
-import { writeFloorPost } from "@/lib/supabase/writes";
+import { pullClubFloor } from "@/lib/supabase/floor-sync";
 
 export default function FloorPage() {
   return (
@@ -53,9 +53,19 @@ function Inner() {
     setPosts(listPosts(clubId));
   }, [clubId]);
 
+  // Pull cloud state on mount and on every realtime tick, then re-render
+  // from local. Pull resolves to a no-op when Supabase isn't configured.
   useEffect(() => {
-    refresh();
-  }, [refresh, live.tick]);
+    if (!clubId) return;
+    let cancelled = false;
+    void (async () => {
+      await pullClubFloor(clubId);
+      if (!cancelled) refresh();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [clubId, refresh, live.tick]);
 
   if (!user || club === undefined) return null;
   if (club === null) {
@@ -145,12 +155,7 @@ function Composer({ clubId, onPosted }: { clubId: string; onPosted: () => void }
       setError(r.error);
       return;
     }
-    void writeFloorPost({
-      clubId,
-      body: r.post.body,
-      kind: r.post.kind,
-      ticker: r.post.meta?.ticker,
-    });
+    // Cloud mirror is fire-and-forget inside lib/floor.ts createPost.
     setBody("");
     setTicker("");
     setKind("text");
