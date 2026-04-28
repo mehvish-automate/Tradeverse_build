@@ -219,6 +219,39 @@ create table if not exists public.event_allocations (
   primary key (user_id, event_id)
 );
 
+-- --- Live sessions (Phase 40) ---
+create table if not exists public.live_sessions (
+  id             uuid primary key default gen_random_uuid(),
+  club_id        uuid not null references public.clubs on delete cascade,
+  title          text not null check (char_length(title) between 3 and 80),
+  description    text,
+  kind           text not null default 'walkthrough'
+    check (kind in ('walkthrough','open-market','ama','other')),
+  host_id        uuid not null references auth.users on delete cascade,
+  host_display   text not null,
+  starts_at      timestamptz not null,
+  duration_mins  integer not null check (duration_mins between 15 and 240),
+  external_link  text,
+  notes          text,
+  created_at     timestamptz not null default now()
+);
+
+create table if not exists public.session_rsvps (
+  session_id   uuid not null references public.live_sessions on delete cascade,
+  user_id      uuid not null references auth.users on delete cascade,
+  display_name text not null,
+  joined_at    timestamptz not null default now(),
+  primary key (session_id, user_id)
+);
+
+-- --- Notification read receipts (Phase 41) ---
+create table if not exists public.notification_reads (
+  user_id   uuid not null references auth.users on delete cascade,
+  notif_id  text not null,
+  read_at   timestamptz not null default now(),
+  primary key (user_id, notif_id)
+);
+
 -- ============================================================================
 -- Part 2 — Row-Level Security + policies
 -- ============================================================================
@@ -244,6 +277,9 @@ alter table public.watchlist_items     enable row level security;
 alter table public.quest_claims        enable row level security;
 alter table public.badge_unlocks       enable row level security;
 alter table public.event_allocations   enable row level security;
+alter table public.live_sessions       enable row level security;
+alter table public.session_rsvps       enable row level security;
+alter table public.notification_reads  enable row level security;
 
 -- Idempotency helper: drop then recreate each policy.
 drop policy if exists "profiles world-readable"        on public.profiles;
@@ -284,6 +320,14 @@ drop policy if exists "own watchlist"                  on public.watchlist_items
 drop policy if exists "own quest claims"               on public.quest_claims;
 drop policy if exists "own badge unlocks"              on public.badge_unlocks;
 drop policy if exists "own event allocations"          on public.event_allocations;
+drop policy if exists "live sessions readable"         on public.live_sessions;
+drop policy if exists "live sessions host writes"      on public.live_sessions;
+drop policy if exists "live sessions host updates"     on public.live_sessions;
+drop policy if exists "live sessions host deletes"     on public.live_sessions;
+drop policy if exists "session rsvps readable"         on public.session_rsvps;
+drop policy if exists "self rsvp"                      on public.session_rsvps;
+drop policy if exists "self un-rsvp"                   on public.session_rsvps;
+drop policy if exists "own notification reads"         on public.notification_reads;
 
 -- profiles
 create policy "profiles world-readable"
@@ -440,6 +484,34 @@ create policy "own event allocations"
   on public.event_allocations for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
+-- live_sessions: any authed user can read; only host can write/update/delete
+create policy "live sessions readable"
+  on public.live_sessions for select to authenticated using (true);
+create policy "live sessions host writes"
+  on public.live_sessions for insert to authenticated
+  with check (host_id = auth.uid());
+create policy "live sessions host updates"
+  on public.live_sessions for update to authenticated
+  using (host_id = auth.uid()) with check (host_id = auth.uid());
+create policy "live sessions host deletes"
+  on public.live_sessions for delete to authenticated
+  using (host_id = auth.uid());
+
+-- session_rsvps: public read; users RSVP / un-RSVP only themselves
+create policy "session rsvps readable"
+  on public.session_rsvps for select to authenticated using (true);
+create policy "self rsvp"
+  on public.session_rsvps for insert to authenticated
+  with check (user_id = auth.uid());
+create policy "self un-rsvp"
+  on public.session_rsvps for delete to authenticated
+  using (user_id = auth.uid());
+
+-- notification_reads: own rows only (CRUD limited to self)
+create policy "own notification reads"
+  on public.notification_reads for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
 -- ============================================================================
 -- Part 3 — Auth trigger (seed profile + stats + paper account on signup)
 -- ============================================================================
@@ -485,3 +557,6 @@ create index if not exists watchlist_user_idx           on public.watchlist_item
 create index if not exists quest_claims_user_idx        on public.quest_claims(user_id, claimed_at desc);
 create index if not exists badge_unlocks_user_idx       on public.badge_unlocks(user_id, earned_at desc);
 create index if not exists event_allocations_user_idx   on public.event_allocations(user_id, submitted_at desc);
+create index if not exists live_sessions_club_idx       on public.live_sessions(club_id, starts_at desc);
+create index if not exists session_rsvps_user_idx       on public.session_rsvps(user_id);
+create index if not exists notification_reads_user_idx  on public.notification_reads(user_id);

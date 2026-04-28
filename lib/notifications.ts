@@ -56,14 +56,40 @@ function writeReadSet(email: string, set: Set<string>) {
 
 export function markRead(email: string, id: string) {
   const s = readReadSet(email);
+  if (s.has(id)) return;
   s.add(id);
   writeReadSet(email, s);
+
+  void (async () => {
+    try {
+      const { mirrorNotificationReads } = await import(
+        "./supabase/notifications-sync"
+      );
+      await mirrorNotificationReads([id]);
+    } catch { /* best-effort */ }
+  })();
 }
 
 export function markAllRead(email: string, notifications: Notification[]) {
   const s = readReadSet(email);
-  for (const n of notifications) s.add(n.id);
+  const newlyRead: string[] = [];
+  for (const n of notifications) {
+    if (!s.has(n.id)) {
+      s.add(n.id);
+      newlyRead.push(n.id);
+    }
+  }
+  if (newlyRead.length === 0) return;
   writeReadSet(email, s);
+
+  void (async () => {
+    try {
+      const { mirrorNotificationReads } = await import(
+        "./supabase/notifications-sync"
+      );
+      await mirrorNotificationReads(newlyRead);
+    } catch { /* best-effort */ }
+  })();
 }
 
 export function isRead(email: string, id: string): boolean {

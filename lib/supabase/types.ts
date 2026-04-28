@@ -418,6 +418,68 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["event_allocations"]["Insert"]>;
       };
+
+      live_sessions: {
+        Row: {
+          id: string;
+          club_id: string;
+          title: string;
+          description: string | null;
+          kind: "walkthrough" | "open-market" | "ama" | "other";
+          host_id: string;
+          host_display: string;
+          starts_at: string;
+          duration_mins: number;
+          external_link: string | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          club_id: string;
+          title: string;
+          description?: string | null;
+          kind?: "walkthrough" | "open-market" | "ama" | "other";
+          host_id: string;
+          host_display: string;
+          starts_at: string;
+          duration_mins: number;
+          external_link?: string | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["live_sessions"]["Insert"]>;
+      };
+
+      session_rsvps: {
+        Row: {
+          session_id: string;
+          user_id: string;
+          display_name: string;
+          joined_at: string;
+        };
+        Insert: {
+          session_id: string;
+          user_id: string;
+          display_name: string;
+          joined_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["session_rsvps"]["Insert"]>;
+      };
+
+      notification_reads: {
+        Row: {
+          user_id: string;
+          notif_id: string;
+          read_at: string;
+        };
+        Insert: {
+          user_id: string;
+          notif_id: string;
+          read_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notification_reads"]["Insert"]>;
+      };
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };

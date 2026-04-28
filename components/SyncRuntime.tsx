@@ -18,6 +18,8 @@ import { pullMyTradeFloors } from "@/lib/supabase/tradefloor-sync";
 import { pullMyClubs } from "@/lib/supabase/club-sync";
 import { pullMyFests } from "@/lib/supabase/fest-sync";
 import { pullEventAllocations } from "@/lib/supabase/events-sync";
+import { pullClubSessions } from "@/lib/supabase/session-sync";
+import { pullNotificationReads } from "@/lib/supabase/notifications-sync";
 import {
   pullWatchlist,
   pushLocalWatchlist,
@@ -78,6 +80,8 @@ export function SyncRuntime() {
     void pullBadgeUnlocks();
     void pullStreakFreezes();
     void pullEventAllocations();
+    void pullClubSessions();
+    void pullNotificationReads();
     void run();
 
     const iv = setInterval(() => {

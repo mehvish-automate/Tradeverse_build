@@ -45,7 +45,7 @@ function write(all: LiveSession[]) {
 }
 
 function genId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return crypto.randomUUID();
 }
 
 // --- CRUD ---
@@ -112,6 +112,14 @@ export function createSession(input: {
   const all = read();
   all.push(session);
   write(all);
+
+  void (async () => {
+    try {
+      const { mirrorSession } = await import("./supabase/session-sync");
+      await mirrorSession(session);
+    } catch { /* best-effort */ }
+  })();
+
   return { ok: true, session };
 }
 
@@ -121,6 +129,14 @@ export function cancelSession(id: string, email: string): boolean {
   if (!session) return false;
   if (session.hostEmail !== email) return false;
   write(all.filter((s) => s.id !== id));
+
+  void (async () => {
+    try {
+      const { mirrorCancelSession } = await import("./supabase/session-sync");
+      await mirrorCancelSession(id);
+    } catch { /* best-effort */ }
+  })();
+
   return true;
 }
 
@@ -135,6 +151,14 @@ export function toggleRsvp(
   if (existing) {
     session.rsvps = session.rsvps.filter((r) => r.email !== user.email);
     write(all);
+
+    void (async () => {
+      try {
+        const { mirrorUnRsvp } = await import("./supabase/session-sync");
+        await mirrorUnRsvp(id);
+      } catch { /* best-effort */ }
+    })();
+
     return { going: false };
   }
   session.rsvps.push({
@@ -143,6 +167,14 @@ export function toggleRsvp(
     ts: Date.now(),
   });
   write(all);
+
+  void (async () => {
+    try {
+      const { mirrorRsvp } = await import("./supabase/session-sync");
+      await mirrorRsvp(id, user.displayName);
+    } catch { /* best-effort */ }
+  })();
+
   return { going: true };
 }
 
@@ -158,6 +190,14 @@ export function updateNotes(
     return { ok: false, error: "Only the host can edit notes." };
   session.notes = notes.slice(0, 4000);
   write(all);
+
+  void (async () => {
+    try {
+      const { mirrorSessionNotes } = await import("./supabase/session-sync");
+      await mirrorSessionNotes(id, session.notes ?? "");
+    } catch { /* best-effort */ }
+  })();
+
   return { ok: true };
 }
 
