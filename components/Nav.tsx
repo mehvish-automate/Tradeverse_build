@@ -64,7 +64,7 @@ export function Nav() {
     <header className="sticky top-0 z-40 border-b border-ink-900/80 bg-ink-950/80 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-6">
         <Link
-          href={authed ? "/profile" : "/"}
+          href="/"
           className="flex shrink-0 items-center gap-2 text-sm font-semibold tracking-tight"
         >
           <span className="inline-block h-2 w-2 rounded-full bg-brand-500" />
