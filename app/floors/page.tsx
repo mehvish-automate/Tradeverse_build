@@ -1,0 +1,58 @@
+"use client";
+
+import { HubCard } from "@/components/HubCard";
+import { Nav } from "@/components/Nav";
+import { RequireAuth } from "@/components/RequireAuth";
+
+export default function FloorsPage() {
+  return (
+    <>
+      <Nav />
+      <main className="mx-auto max-w-5xl px-6 py-10">
+        <RequireAuth>
+          <Inner />
+        </RequireAuth>
+      </main>
+    </>
+  );
+}
+
+function Inner() {
+  return (
+    <>
+      <div className="mb-8">
+        <div className="text-xs font-medium uppercase tracking-[0.18em] text-brand-300">
+          Floors
+        </div>
+        <h1 className="mt-1 text-3xl font-semibold">Where you compete</h1>
+        <p className="mt-2 max-w-2xl text-sm text-ink-400">
+          Three competitive surfaces. Allocate sectors on a real market event
+          and watch it resolve, jump into a quiz a student club is hosting, or
+          race your friends on the weekly trade floor.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <HubCard
+          href="/events"
+          accent="brand"
+          eyebrow="Market events"
+          title="Analysis Challenge"
+          body="Budget week, IT earnings, festive auto. Pick a sector allocation, resolve, see your alpha."
+        />
+        <HubCard
+          href="/marketplace"
+          eyebrow="Quizzes"
+          title="Student-built fests"
+          body="Multi-day club tournaments, custom quizzes, hackathons. Browse what's running and join with a code."
+        />
+        <HubCard
+          href="/trade-floors"
+          eyebrow="Friends"
+          title="Trade floors"
+          body="3–20 friends, weekly cycle. Same daily questions, ranked by accuracy + speed."
+        />
+      </div>
+    </>
+  );
+}

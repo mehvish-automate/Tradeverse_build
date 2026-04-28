@@ -7,14 +7,30 @@ import { useEffect, useState } from "react";
 import { unreadCount } from "@/lib/notifications";
 import { useSession } from "@/lib/session";
 
-type NavLink = { href: string; label: string };
+type NavLink = { href: string; label: string; matches?: string[] };
 
 const APP_LINKS: NavLink[] = [
-  { href: "/play", label: "Play" },
-  { href: "/trade", label: "Trade" },
-  { href: "/trade-floors", label: "Floors" },
-  { href: "/clubs", label: "Clubs" },
   { href: "/learn", label: "Learn" },
+  {
+    href: "/quests",
+    label: "Quests",
+    matches: ["/play"],
+  },
+  {
+    href: "/strategy",
+    label: "Strategy Builder",
+    matches: ["/trade", "/portfolios", "/watchlist"],
+  },
+  {
+    href: "/floors",
+    label: "Floors",
+    matches: ["/events", "/trade-floors", "/fests"],
+  },
+  {
+    href: "/social",
+    label: "Social",
+    matches: ["/clubs", "/marketplace"],
+  },
 ];
 
 const MARKETING_LINKS: NavLink[] = [
@@ -24,12 +40,10 @@ const MARKETING_LINKS: NavLink[] = [
 ];
 
 const SECONDARY_AUTHED_LINKS: NavLink[] = [
-  { href: "/portfolios", label: "Portfolios" },
-  { href: "/watchlist", label: "Watchlist" },
-  { href: "/quests", label: "Quests" },
   { href: "/badges", label: "Badges" },
   { href: "/leaderboards", label: "Leaderboards" },
-  { href: "/marketplace", label: "Events" },
+  { href: "/history", label: "History" },
+  { href: "/inbox", label: "Inbox" },
   { href: "/settings", label: "Settings" },
 ];
 
@@ -52,10 +66,14 @@ export function Nav() {
     setDrawerOpen(false);
   }, [pathname]);
 
-  const isActive = (href: string) => {
-    if (href.startsWith("/#")) return false;
-    if (href === "/") return pathname === "/";
-    return pathname === href || pathname.startsWith(href + "/");
+  const matchesPrefix = (prefix: string) =>
+    pathname === prefix || pathname.startsWith(prefix + "/");
+
+  const isActiveLink = (link: NavLink) => {
+    if (link.href.startsWith("/#")) return false;
+    if (link.href === "/") return pathname === "/";
+    if (matchesPrefix(link.href)) return true;
+    return (link.matches ?? []).some(matchesPrefix);
   };
 
   const authed = loaded && !!user;
@@ -74,7 +92,7 @@ export function Nav() {
         {/* Desktop primary nav */}
         <nav className="hidden flex-1 items-center justify-center gap-1 text-sm md:flex">
           {(authed ? APP_LINKS : MARKETING_LINKS).map((l) => (
-            <NavItem key={l.href} link={l} active={isActive(l.href)} />
+            <NavItem key={l.href} link={l} active={isActiveLink(l)} />
           ))}
         </nav>
 
@@ -145,7 +163,7 @@ export function Nav() {
           <div className="mx-auto max-w-6xl px-4 py-3">
             <nav className="grid gap-1">
               {(authed ? APP_LINKS : MARKETING_LINKS).map((l) => (
-                <DrawerLink key={l.href} link={l} active={isActive(l.href)} />
+                <DrawerLink key={l.href} link={l} active={isActiveLink(l)} />
               ))}
               {authed && (
                 <>
@@ -153,11 +171,11 @@ export function Nav() {
                     More
                   </div>
                   {SECONDARY_AUTHED_LINKS.map((l) => (
-                    <DrawerLink key={l.href} link={l} active={isActive(l.href)} />
+                    <DrawerLink key={l.href} link={l} active={isActiveLink(l)} />
                   ))}
                   <DrawerLink
                     link={{ href: "/profile", label: `@${user!.displayName}` }}
-                    active={isActive("/profile")}
+                    active={isActiveLink({ href: "/profile", label: "" })}
                   />
                 </>
               )}

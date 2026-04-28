@@ -57,6 +57,27 @@ function QuestsInner() {
         </div>
       </div>
 
+      <Link
+        href="/play"
+        className="group mb-8 flex items-center justify-between rounded-2xl border border-brand-500/40 bg-gradient-to-br from-brand-500/10 to-transparent p-5 transition hover:border-brand-500"
+      >
+        <div>
+          <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
+            Daily · today
+          </div>
+          <div className="mt-1 text-xl font-semibold text-ink-50">
+            Today&apos;s chart challenge
+          </div>
+          <p className="mt-1 text-sm text-ink-300">
+            5 questions from yesterday&apos;s tape. ~3 minutes. Counts toward
+            today&apos;s quests.
+          </p>
+        </div>
+        <span className="text-sm text-brand-300 group-hover:underline">
+          Play →
+        </span>
+      </Link>
+
       {groups.map((g) => {
         const items = quests.filter((q) => q.quest.window === g.window);
         const totalClaimable = items
@@ -100,18 +121,12 @@ function QuestsInner() {
         );
       })}
 
-      <div className="mt-10 flex flex-wrap gap-3">
-        <Link
-          href="/play"
-          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-brand-300"
-        >
-          Play today&apos;s challenge →
-        </Link>
+      <div className="mt-10">
         <Link
           href="/learn"
           className="rounded-lg border border-ink-700 px-4 py-2 text-sm text-ink-100 hover:bg-ink-900"
         >
-          Open skill tree
+          Open skill tree →
         </Link>
       </div>
     </>
