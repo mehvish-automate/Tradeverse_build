@@ -71,6 +71,14 @@ export function submitAllocation(
   if (existing >= 0) all[existing] = row;
   else all.push(row);
   write(email, all);
+
+  void (async () => {
+    try {
+      const { mirrorEventAllocation } = await import("./supabase/events-sync");
+      await mirrorEventAllocation(row);
+    } catch { /* best-effort */ }
+  })();
+
   return { ok: true };
 }
 
@@ -171,6 +179,13 @@ export function claimEventReward(
     kind: "mystery",
     detail: `${def.title}: +${xp} XP (alpha ${score.alphaPct >= 0 ? "+" : ""}${score.alphaPct}%)`,
   });
+
+  void (async () => {
+    try {
+      const { mirrorEventClaim } = await import("./supabase/events-sync");
+      await mirrorEventClaim(eventId);
+    } catch { /* best-effort */ }
+  })();
 
   return { ok: true, xp };
 }

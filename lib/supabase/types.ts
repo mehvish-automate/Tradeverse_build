@@ -400,6 +400,24 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["badge_unlocks"]["Insert"]>;
       };
+
+      event_allocations: {
+        Row: {
+          user_id: string;
+          event_id: string;
+          allocation: Json;
+          submitted_at: string;
+          claimed: boolean;
+        };
+        Insert: {
+          user_id: string;
+          event_id: string;
+          allocation: Json;
+          submitted_at?: string;
+          claimed?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["event_allocations"]["Insert"]>;
+      };
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };

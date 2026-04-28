@@ -17,6 +17,7 @@ import { pullPortfolios } from "@/lib/supabase/portfolio-sync";
 import { pullMyTradeFloors } from "@/lib/supabase/tradefloor-sync";
 import { pullMyClubs } from "@/lib/supabase/club-sync";
 import { pullMyFests } from "@/lib/supabase/fest-sync";
+import { pullEventAllocations } from "@/lib/supabase/events-sync";
 import {
   pullWatchlist,
   pushLocalWatchlist,
@@ -76,6 +77,7 @@ export function SyncRuntime() {
     void pullQuestClaims();
     void pullBadgeUnlocks();
     void pullStreakFreezes();
+    void pullEventAllocations();
     void run();
 
     const iv = setInterval(() => {

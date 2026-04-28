@@ -209,6 +209,16 @@ create table if not exists public.badge_unlocks (
   primary key (user_id, badge_id)
 );
 
+-- --- Market events (Phase 39) ---
+create table if not exists public.event_allocations (
+  user_id      uuid not null references auth.users on delete cascade,
+  event_id     text not null,
+  allocation   jsonb not null,
+  submitted_at timestamptz not null default now(),
+  claimed      boolean not null default false,
+  primary key (user_id, event_id)
+);
+
 -- ============================================================================
 -- Part 2 — Row-Level Security + policies
 -- ============================================================================
@@ -233,6 +243,7 @@ alter table public.orders              enable row level security;
 alter table public.watchlist_items     enable row level security;
 alter table public.quest_claims        enable row level security;
 alter table public.badge_unlocks       enable row level security;
+alter table public.event_allocations   enable row level security;
 
 -- Idempotency helper: drop then recreate each policy.
 drop policy if exists "profiles world-readable"        on public.profiles;
@@ -272,6 +283,7 @@ drop policy if exists "own orders"                     on public.orders;
 drop policy if exists "own watchlist"                  on public.watchlist_items;
 drop policy if exists "own quest claims"               on public.quest_claims;
 drop policy if exists "own badge unlocks"              on public.badge_unlocks;
+drop policy if exists "own event allocations"          on public.event_allocations;
 
 -- profiles
 create policy "profiles world-readable"
@@ -424,6 +436,9 @@ create policy "own quest claims"
 create policy "own badge unlocks"
   on public.badge_unlocks for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "own event allocations"
+  on public.event_allocations for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- ============================================================================
 -- Part 3 — Auth trigger (seed profile + stats + paper account on signup)
@@ -469,3 +484,4 @@ create index if not exists trade_floor_members_user_idx on public.trade_floor_me
 create index if not exists watchlist_user_idx           on public.watchlist_items(user_id, added_at desc);
 create index if not exists quest_claims_user_idx        on public.quest_claims(user_id, claimed_at desc);
 create index if not exists badge_unlocks_user_idx       on public.badge_unlocks(user_id, earned_at desc);
+create index if not exists event_allocations_user_idx   on public.event_allocations(user_id, submitted_at desc);
