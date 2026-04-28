@@ -7,34 +7,34 @@ import { SyncRuntime } from "@/components/SyncRuntime";
 
 export const metadata: Metadata = {
   title: {
-    default: "TradeVerse — Markets as a daily skill game",
+    default: "TradeVerse — Markets as a daily skill challenge",
     template: "%s · TradeVerse",
   },
   description:
-    "TradeVerse is a pure skill-game for Indian markets. Daily chart challenges and trade floors. No trading, no real money, no KYC.",
+    "TradeVerse is a pure skill platform for Indian markets. Daily chart challenges and trade floors. No trading, no real money, no KYC.",
   metadataBase: new URL("https://tradeverse.app"),
   manifest: "/manifest.webmanifest",
   applicationName: "TradeVerse",
   keywords: [
     "TradeVerse",
-    "stock market game India",
+    "stock market skill India",
     "chart reading",
     "NSE BSE",
     "finance learning India",
     "trade floor",
   ],
   openGraph: {
-    title: "TradeVerse — Markets as a daily skill game",
+    title: "TradeVerse — Markets as a daily skill challenge",
     description:
-      "A daily 5-minute chart-reading skill game on Indian markets. Play solo, race your friends, no real money.",
+      "A daily 5-minute chart-reading challenge on Indian markets. Play solo, race your friends, no real money.",
     type: "website",
     siteName: "TradeVerse",
   },
   twitter: {
     card: "summary_large_image",
-    title: "TradeVerse — Markets as a daily skill game",
+    title: "TradeVerse — Markets as a daily skill challenge",
     description:
-      "A daily 5-minute skill game on live NSE/BSE data. No trading, no real money.",
+      "A daily 5-minute chart-reading challenge on live NSE/BSE data. No trading, no real money.",
   },
   robots: { index: true, follow: true },
   icons: {

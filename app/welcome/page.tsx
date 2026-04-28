@@ -67,7 +67,7 @@ function WelcomeInner() {
             3-minute setup, then the first challenge.
           </h1>
           <p className="mt-3 max-w-xl text-ink-300">
-            TradeVerse is a skill game on the Indian market, not a trading
+            TradeVerse is a skill platform on the Indian market, not a trading
             app. Your money stays in your bank; your XP, streaks, and rank
             live here. We&apos;ll get you into a daily run in two taps.
           </p>

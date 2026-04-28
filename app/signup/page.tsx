@@ -42,7 +42,7 @@ function SignupForm() {
     setMessage(null);
 
     if (!agree) {
-      setError("Please confirm you're 18+ and understand this is a skill game.");
+      setError("Please confirm you're 18+ and understand this is a skill platform.");
       return;
     }
 
@@ -144,7 +144,7 @@ function SignupForm() {
               className="mt-0.5 h-4 w-4 rounded border-ink-600 bg-ink-900"
             />
             <span>
-              I am 18+ and understand TradeVerse is a pure skill game — no
+              I am 18+ and understand TradeVerse is a pure skill platform — no
               brokerage, no KYC, no real-money trading, and no investment
               advice.
             </span>

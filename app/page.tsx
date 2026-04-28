@@ -4,7 +4,6 @@ import { HeroOfferings } from "@/components/HeroOfferings";
 import { Nav } from "@/components/Nav";
 import { Problem } from "@/components/Problem";
 import { Vision } from "@/components/Vision";
-import { Waitlist } from "@/components/Waitlist";
 import { WelcomeBackBanner } from "@/components/WelcomeBackBanner";
 
 export default function Home() {
@@ -17,7 +16,6 @@ export default function Home() {
         <Problem />
         <Vision />
         <HeroOfferings />
-        <Waitlist />
       </main>
       <Footer />
     </>

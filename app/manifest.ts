@@ -5,14 +5,14 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "TradeVerse",
     short_name: "TradeVerse",
     description:
-      "A daily 5-minute chart-reading skill game on Indian markets. Play solo, race friends. Zero real money.",
+      "A daily 5-minute chart-reading challenge on Indian markets. Play solo, race friends. Zero real money.",
     start_url: "/profile",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
     background_color: "#020617",
     theme_color: "#020617",
-    categories: ["education", "finance", "games"],
+    categories: ["education", "finance"],
     icons: [
       {
         src: "/icon.svg",

@@ -19,7 +19,7 @@ const APP_LINKS: NavLink[] = [
 
 const MARKETING_LINKS: NavLink[] = [
   { href: "/#how", label: "How it works" },
-  { href: "/#heroes", label: "Game modes" },
+  { href: "/#heroes", label: "Modes" },
   { href: "/#faq", label: "FAQ" },
 ];
 

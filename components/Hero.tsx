@@ -16,7 +16,7 @@ export function Hero() {
 
           <h1 className="mt-6 text-balance text-5xl font-semibold leading-[1.05] tracking-tight md:text-7xl">
             Markets as a{" "}
-            <span className="text-brand-500">daily skill game</span>.
+            <span className="text-brand-500">daily skill challenge</span>.
           </h1>
 
           <p className="mt-6 max-w-xl text-pretty text-lg text-ink-300">

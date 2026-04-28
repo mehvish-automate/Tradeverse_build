@@ -9,12 +9,12 @@ export function Footer() {
             TradeVerse
           </div>
           <p className="mt-3 max-w-xs text-sm text-ink-400">
-            Skill-game for Indian markets. Daily chart challenges. Friend
+            Skill platform for Indian markets. Daily chart challenges. Friend
             trade floors. Zero real money.
           </p>
           <p className="mt-4 text-xs text-ink-500">
             © {year} TradeVerse. Not an investment advisor. Not a broker. Not a
-            fantasy-money-games platform.
+            fantasy-money platform.
           </p>
         </div>
 
@@ -40,10 +40,6 @@ export function Footer() {
             <li>
               <span className="text-ink-100">Do I need a demat?</span>{" "}
               <span className="text-ink-500">Never.</span>
-            </li>
-            <li>
-              <span className="text-ink-100">Under 18?</span>{" "}
-              <span className="text-ink-500">Gated at signup.</span>
             </li>
           </ul>
         </div>

@@ -4,8 +4,8 @@ export function Vision() {
   return (
     <Section
       eyebrow="Vision & positioning"
-      title="A daily 5-minute skill game Gen Z Indians play with their friends."
-      kicker="For first-job Gen Z Indians (22–28) who find the stock market intimidating, TradeVerse is the only markets platform that turns live market data into a daily visual skill game and trade floor — no trading, no real money."
+      title="A daily 5-minute skill challenge Gen Z Indians take with their friends."
+      kicker="For first-job Gen Z Indians (22–28) who find the stock market intimidating, TradeVerse is the only markets platform that turns live market data into a daily visual skill challenge and trade floor — no trading, no real money."
     >
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Pillar
