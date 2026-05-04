@@ -23,7 +23,11 @@
 set -euo pipefail
 
 SRC="$(git rev-parse --show-toplevel)"
-DEST="${1:-${TRADEVERSE_MIRROR:-$HOME/Tradeverse_build_mirror}}"
+# Default mirror is a sibling of the source — so /home/user/Tradeverse_build
+# pairs with /home/user/Tradeverse_build_mirror. Override via $1 or
+# TRADEVERSE_MIRROR if you want it elsewhere.
+DEFAULT_DEST="$(dirname "$SRC")/$(basename "$SRC")_mirror"
+DEST="${1:-${TRADEVERSE_MIRROR:-$DEFAULT_DEST}}"
 
 if [ ! -d "$SRC/.git" ]; then
   echo "✗ Run from inside the TradeVerse repo working tree." >&2
@@ -37,6 +41,14 @@ if [ ! -d "$DEST/.git" ]; then
   git -C "$DEST" init -q
   # Match the source's default branch shape so log commands feel familiar.
   git -C "$DEST" symbolic-ref HEAD refs/heads/main 2>/dev/null || true
+  # Local-only snapshots — don't require commit signing config the
+  # source repo may have set globally. The mirror has no remote.
+  git -C "$DEST" config commit.gpgsign false
+  git -C "$DEST" config tag.gpgsign false
+  # Use a stable identity so the mirror commits don't pick up the
+  # source's identity (which may be tied to signing keys / hooks).
+  git -C "$DEST" config user.name "TradeVerse Mirror"
+  git -C "$DEST" config user.email "mirror@local"
 fi
 
 HEAD_SHA="$(git -C "$SRC" rev-parse --short HEAD)"
