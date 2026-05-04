@@ -61,10 +61,24 @@ export async function writeUserStats(
   return !error;
 }
 
-/** Insert a trade-floor row + owner membership. */
+/**
+ * Insert a trade-floor row + owner membership. Phase 42 extends the
+ * payload with the launch-flow fields. Defaults match the schema so
+ * legacy callers (none in tree, but extensions / scripts) still work.
+ */
 export async function writeTradeFloor(input: {
   id: string;
   name: string;
+  privacy?: "public" | "private";
+  startAt?: number | null;
+  endAt?: number | null;
+  memberCap?: number;
+  virtualCapital?: number;
+  stockUniverse?: unknown;
+  assetClasses?: string[];
+  marketRegion?: "IN" | "UAE" | "US" | "GLOBAL";
+  status?: "pending_approval" | "live" | "ended" | "rejected";
+  createdByKind?: "user" | "club" | "ambassador";
 }): Promise<boolean> {
   const supabase = getBrowserSupabase();
   if (!supabase) return false;
@@ -75,6 +89,16 @@ export async function writeTradeFloor(input: {
     id: input.id,
     name: input.name,
     created_by: userId,
+    privacy: input.privacy ?? "public",
+    start_at: input.startAt ? new Date(input.startAt).toISOString() : null,
+    end_at: input.endAt ? new Date(input.endAt).toISOString() : null,
+    member_cap: input.memberCap ?? 20,
+    virtual_capital: input.virtualCapital ?? 1_000_000,
+    stock_universe: input.stockUniverse ?? { kind: "nifty50" },
+    asset_classes: input.assetClasses ?? ["stocks"],
+    market_region: input.marketRegion ?? "IN",
+    status: input.status ?? "live",
+    created_by_kind: input.createdByKind ?? "user",
   };
   const { error: floorErr } = await (supabase.from("trade_floors") as unknown as {
     insert: (row: unknown) => Promise<{ error: { message: string } | null }>;
@@ -86,6 +110,78 @@ export async function writeTradeFloor(input: {
     insert: (row: unknown) => Promise<{ error: { message: string } | null }>;
   }).insert(memberRow);
   return !memErr;
+}
+
+/** Admin-only — flip a trade floor's status. RLS gates by is_admin. */
+export async function setTradeFloorStatus(
+  floorId: string,
+  status: "live" | "rejected" | "ended",
+): Promise<boolean> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return false;
+  const { error } = await (supabase.from("trade_floors") as unknown as {
+    update: (vals: { status: string }) => {
+      eq: (
+        col: string,
+        val: string,
+      ) => Promise<{ error: { message: string } | null }>;
+    };
+  })
+    .update({ status })
+    .eq("id", floorId);
+  return !error;
+}
+
+/** Admin-only — list every floor in pending_approval status. */
+export async function listPendingTradeFloors(): Promise<
+  | {
+      id: string;
+      name: string;
+      privacy: "public" | "private";
+      member_cap: number;
+      virtual_capital: number;
+      market_region: string;
+      created_by: string;
+      created_at: string;
+    }[]
+  | null
+> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return null;
+  const res = await (supabase.from("trade_floors") as unknown as {
+    select: (cols: string) => {
+      eq: (
+        col: string,
+        val: string,
+      ) => {
+        order: (
+          col: string,
+          opts: { ascending: boolean },
+        ) => Promise<{
+          data:
+            | {
+                id: string;
+                name: string;
+                privacy: "public" | "private";
+                member_cap: number;
+                virtual_capital: number;
+                market_region: string;
+                created_by: string;
+                created_at: string;
+              }[]
+            | null;
+          error: { message: string } | null;
+        }>;
+      };
+    };
+  })
+    .select(
+      "id, name, privacy, member_cap, virtual_capital, market_region, created_by, created_at",
+    )
+    .eq("status", "pending_approval")
+    .order("created_at", { ascending: false });
+  if (res.error) return null;
+  return res.data ?? [];
 }
 
 /** Join an existing trade floor by code. RLS enforces self-join. */

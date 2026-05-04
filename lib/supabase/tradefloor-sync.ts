@@ -54,12 +54,24 @@ export async function pullMyTradeFloors(): Promise<number> {
   const floorIds = myMemRes.data.map((r) => r.trade_floor_id);
   if (floorIds.length === 0) return 0;
 
-  // 2. The floor rows themselves.
+  // 2. The floor rows themselves (Phase 42 columns included; legacy
+  //    rows without them get safe defaults via withDefaults() in the
+  //    consuming reader).
   type FloorRow = {
     id: string;
     name: string;
     created_by: string;
     created_at: string;
+    privacy: "public" | "private" | null;
+    start_at: string | null;
+    end_at: string | null;
+    member_cap: number | null;
+    virtual_capital: number | null;
+    stock_universe: unknown;
+    asset_classes: string[] | null;
+    market_region: "IN" | "UAE" | "US" | "GLOBAL" | null;
+    status: "pending_approval" | "live" | "ended" | "rejected" | null;
+    created_by_kind: "user" | "club" | "ambassador" | null;
   };
   const floorsRes = await (supabase.from("trade_floors") as unknown as {
     select: (cols: string) => {
@@ -69,7 +81,9 @@ export async function pullMyTradeFloors(): Promise<number> {
       ) => Promise<{ data: FloorRow[] | null; error: { message: string } | null }>;
     };
   })
-    .select("id, name, created_by, created_at")
+    .select(
+      "id, name, created_by, created_at, privacy, start_at, end_at, member_cap, virtual_capital, stock_universe, asset_classes, market_region, status, created_by_kind",
+    )
     .in("id", floorIds);
   if (floorsRes.error || !floorsRes.data) return 0;
 
@@ -121,12 +135,26 @@ export async function pullMyTradeFloors(): Promise<number> {
           joinedAt: new Date(m.joined_at).getTime(),
         };
       });
+    const createdAtMs = new Date(f.created_at).getTime();
     return {
       id: f.id,
       name: f.name,
       createdBy: creator?.email ?? f.created_by,
-      createdAt: new Date(f.created_at).getTime(),
+      createdByKind: f.created_by_kind ?? "user",
+      createdAt: createdAtMs,
       members,
+      privacy: f.privacy ?? "public",
+      startAt: f.start_at ? new Date(f.start_at).getTime() : createdAtMs,
+      endAt: f.end_at
+        ? new Date(f.end_at).getTime()
+        : createdAtMs + 7 * 24 * 60 * 60 * 1000,
+      memberCap: f.member_cap ?? 20,
+      virtualCapital: Number(f.virtual_capital ?? 1_000_000),
+      stockUniverse:
+        (f.stock_universe as TradeFloor["stockUniverse"]) ?? { kind: "nifty50" },
+      assetClasses: ((f.asset_classes ?? ["stocks"]) as TradeFloor["assetClasses"]),
+      marketRegion: f.market_region ?? "IN",
+      status: f.status ?? "live",
     };
   });
 

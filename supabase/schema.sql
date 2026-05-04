@@ -29,6 +29,12 @@ create table if not exists public.profiles (
   onboarded       boolean not null default false
 );
 
+-- Phase 42 — admin role flag. Default false; bootstrap by manually
+-- updating one row in the SQL editor: update profiles set is_admin=true
+-- where email='you@example.com';
+alter table public.profiles
+  add column if not exists is_admin boolean not null default false;
+
 -- --- Progress ---
 create table if not exists public.daily_results (
   id          uuid primary key default gen_random_uuid(),
@@ -59,6 +65,28 @@ create table if not exists public.trade_floors (
   created_by  uuid not null references auth.users on delete cascade,
   created_at  timestamptz not null default now()
 );
+
+-- Phase 42 — launch flow columns. Added with `if not exists` so the
+-- migration is safe to re-run; defaults make pre-Phase-42 rows valid.
+alter table public.trade_floors
+  add column if not exists privacy text not null default 'public'
+    check (privacy in ('public','private')),
+  add column if not exists start_at timestamptz,
+  add column if not exists end_at timestamptz,
+  add column if not exists member_cap integer not null default 20
+    check (member_cap between 2 and 200),
+  add column if not exists virtual_capital bigint not null default 1000000
+    check (virtual_capital between 100000 and 10000000),
+  add column if not exists stock_universe jsonb not null
+    default '{"kind":"nifty50"}'::jsonb,
+  add column if not exists asset_classes text[] not null
+    default array['stocks']::text[],
+  add column if not exists market_region text not null default 'IN'
+    check (market_region in ('IN','UAE','US','GLOBAL')),
+  add column if not exists status text not null default 'live'
+    check (status in ('pending_approval','live','ended','rejected')),
+  add column if not exists created_by_kind text not null default 'user'
+    check (created_by_kind in ('user','club','ambassador'));
 
 create table if not exists public.trade_floor_members (
   trade_floor_id text not null references public.trade_floors on delete cascade,
@@ -291,6 +319,9 @@ drop policy if exists "own stats read"                 on public.user_stats;
 drop policy if exists "own stats write"                on public.user_stats;
 drop policy if exists "trade floors readable"          on public.trade_floors;
 drop policy if exists "trade floors create"            on public.trade_floors;
+drop policy if exists "trade floors admin read"        on public.trade_floors;
+drop policy if exists "trade floors admin update"      on public.trade_floors;
+drop policy if exists "trade floors creator update"    on public.trade_floors;
 drop policy if exists "members readable"               on public.trade_floor_members;
 drop policy if exists "self join floor"                on public.trade_floor_members;
 drop policy if exists "self leave floor"               on public.trade_floor_members;
@@ -363,6 +394,38 @@ create policy "trade floors readable"
 create policy "trade floors create"
   on public.trade_floors for insert to authenticated
   with check (auth.uid() = created_by);
+
+-- Admins (profiles.is_admin = true) can read all trade floors so they
+-- can review pending_approval rows.
+create policy "trade floors admin read"
+  on public.trade_floors for select to authenticated
+  using (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.is_admin = true
+    )
+  );
+
+-- Admins can update status (approve / reject).
+create policy "trade floors admin update"
+  on public.trade_floors for update to authenticated
+  using (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.is_admin = true
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.is_admin = true
+    )
+  );
+
+-- Creator can update their own floor (e.g. notes — not status).
+create policy "trade floors creator update"
+  on public.trade_floors for update to authenticated
+  using (auth.uid() = created_by) with check (auth.uid() = created_by);
 
 -- trade_floor_members
 create policy "members readable"
@@ -553,6 +616,7 @@ create index if not exists floor_posts_club_idx         on public.floor_posts(cl
 create index if not exists orders_user_idx              on public.orders(user_id, placed_at desc);
 create index if not exists portfolios_user_idx          on public.portfolios(user_id, created_at desc);
 create index if not exists trade_floor_members_user_idx on public.trade_floor_members(user_id);
+create index if not exists trade_floors_status_idx      on public.trade_floors(status, created_at desc);
 create index if not exists watchlist_user_idx           on public.watchlist_items(user_id, added_at desc);
 create index if not exists quest_claims_user_idx        on public.quest_claims(user_id, claimed_at desc);
 create index if not exists badge_unlocks_user_idx       on public.badge_unlocks(user_id, earned_at desc);

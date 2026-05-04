@@ -194,6 +194,7 @@ export async function pullProfile(): Promise<boolean> {
     dob: string;
     home_institute: string | null;
     onboarded: boolean;
+    is_admin: boolean | null;
   };
   const res = await (supabase.from("profiles") as unknown as {
     select: (cols: string) => {
@@ -208,7 +209,7 @@ export async function pullProfile(): Promise<boolean> {
       };
     };
   })
-    .select("email, display_name, dob, home_institute, onboarded")
+    .select("email, display_name, dob, home_institute, onboarded, is_admin")
     .eq("id", auth.user.id)
     .maybeSingle();
   if (res.error || !res.data) return false;
@@ -248,7 +249,19 @@ export async function pullProfile(): Promise<boolean> {
   if (row.onboarded) {
     localStorage.setItem(`tv.onboarded.${email}`, "1");
   }
+  // Phase 42 — admin flag, used to gate /admin/* routes client-side.
+  // RLS at the DB layer is the actual security boundary.
+  localStorage.setItem(
+    `tv.isAdmin.${email}`,
+    row.is_admin ? "1" : "0",
+  );
   return true;
+}
+
+/** Sync read of the cached admin flag. */
+export function isAdminLocal(email: string): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(`tv.isAdmin.${email}`) === "1";
 }
 
 // --- Helpers ---

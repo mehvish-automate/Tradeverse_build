@@ -9,13 +9,67 @@ export type TradeFloorMember = {
   joinedAt: number;
 };
 
+export type TradeFloorPrivacy = "public" | "private";
+export type TradeFloorStatus =
+  | "pending_approval"
+  | "live"
+  | "ended"
+  | "rejected";
+export type TradeFloorCreatorKind = "user" | "club" | "ambassador";
+export type AssetClass = "stocks" | "etfs" | "indices";
+export type MarketRegion = "IN" | "UAE" | "US" | "GLOBAL";
+
+export type StockUniverse =
+  | { kind: "nifty50" }
+  | { kind: "nifty100" }
+  | { kind: "all" }
+  | { kind: "custom-sectors"; sectors: string[] }
+  | { kind: "handpicked"; symbols: string[] };
+
 export type TradeFloor = {
   id: string; // invite/share code, short human-friendly
   name: string;
   createdBy: string; // email
+  createdByKind: TradeFloorCreatorKind;
   createdAt: number;
   members: TradeFloorMember[];
+  // Phase 42 launch fields
+  privacy: TradeFloorPrivacy;
+  startAt: number; // ms epoch
+  endAt: number; // ms epoch
+  memberCap: number;
+  virtualCapital: number;
+  stockUniverse: StockUniverse;
+  assetClasses: AssetClass[];
+  marketRegion: MarketRegion;
+  status: TradeFloorStatus;
 };
+
+/** Default missing Phase 42 fields on legacy floors (created before launch flow). */
+function withDefaults(f: Partial<TradeFloor> & { id: string; name: string; createdBy: string; createdAt: number; members: TradeFloorMember[] }): TradeFloor {
+  return {
+    createdByKind: "user",
+    privacy: "public",
+    startAt: f.createdAt,
+    endAt: f.createdAt + 7 * 24 * 60 * 60 * 1000,
+    memberCap: 20,
+    virtualCapital: 1_000_000,
+    stockUniverse: { kind: "nifty50" },
+    assetClasses: ["stocks"],
+    marketRegion: "IN",
+    status: "live",
+    ...f,
+  } as TradeFloor;
+}
+
+/** True when a launched floor must wait for admin approval. */
+export function needsAdminApproval(input: {
+  privacy: TradeFloorPrivacy;
+  memberCap: number;
+}): boolean {
+  if (input.privacy === "public") return true;
+  return input.memberCap > 15;
+}
 
 const TRADE_FLOORS_KEY = "tv.tradeFloors";
 const MEMBERSHIP_KEY = (email: string) => `tv.memberships.${email}`;
@@ -23,7 +77,10 @@ const MEMBERSHIP_KEY = (email: string) => `tv.memberships.${email}`;
 function readTradeFloors(): TradeFloor[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(TRADE_FLOORS_KEY) || "[]") as TradeFloor[];
+    const raw = JSON.parse(
+      localStorage.getItem(TRADE_FLOORS_KEY) || "[]",
+    ) as TradeFloor[];
+    return raw.map((f) => withDefaults(f));
   } catch {
     return [];
   }
@@ -55,13 +112,51 @@ function genCode(): string {
   return out;
 }
 
-export function createTradeFloor(input: {
+export type CreateTradeFloorInput = {
   name: string;
   creator: { email: string; displayName: string };
-}): { ok: true; tradeFloor: TradeFloor } | { ok: false; error: string } {
+  privacy: TradeFloorPrivacy;
+  startAt: number;
+  endAt: number;
+  memberCap: number;
+  virtualCapital: number;
+  stockUniverse: StockUniverse;
+  assetClasses: AssetClass[];
+  marketRegion: MarketRegion;
+  createdByKind?: TradeFloorCreatorKind;
+};
+
+export type CreateTradeFloorResult =
+  | { ok: true; tradeFloor: TradeFloor; needsApproval: boolean }
+  | { ok: false; error: string };
+
+export function createTradeFloor(
+  input: CreateTradeFloorInput,
+): CreateTradeFloorResult {
   const name = input.name.trim();
-  if (name.length < 3) return { ok: false, error: "Trade Floor name too short." };
-  if (name.length > 40) return { ok: false, error: "Trade Floor name too long." };
+  if (name.length < 3) return { ok: false, error: "Trade floor name too short." };
+  if (name.length > 40) return { ok: false, error: "Trade floor name too long." };
+
+  if (!Number.isFinite(input.startAt) || !Number.isFinite(input.endAt)) {
+    return { ok: false, error: "Pick a valid schedule." };
+  }
+  if (input.endAt <= input.startAt) {
+    return { ok: false, error: "End must be after start." };
+  }
+  if (input.memberCap < 2 || input.memberCap > 200) {
+    return { ok: false, error: "Member cap must be between 2 and 200." };
+  }
+  if (input.virtualCapital < 100_000 || input.virtualCapital > 10_000_000) {
+    return { ok: false, error: "Virtual capital must be ₹1L–₹1Cr." };
+  }
+  if (input.assetClasses.length === 0) {
+    return { ok: false, error: "Pick at least one asset class." };
+  }
+
+  const approval = needsAdminApproval({
+    privacy: input.privacy,
+    memberCap: input.memberCap,
+  });
 
   const all = readTradeFloors();
   let id = genCode();
@@ -71,6 +166,7 @@ export function createTradeFloor(input: {
     id,
     name,
     createdBy: input.creator.email,
+    createdByKind: input.createdByKind ?? "user",
     createdAt: Date.now(),
     members: [
       {
@@ -79,6 +175,15 @@ export function createTradeFloor(input: {
         joinedAt: Date.now(),
       },
     ],
+    privacy: input.privacy,
+    startAt: input.startAt,
+    endAt: input.endAt,
+    memberCap: input.memberCap,
+    virtualCapital: input.virtualCapital,
+    stockUniverse: input.stockUniverse,
+    assetClasses: input.assetClasses,
+    marketRegion: input.marketRegion,
+    status: approval ? "pending_approval" : "live",
   };
   all.push(tradeFloor);
   writeTradeFloors(all);
@@ -87,7 +192,7 @@ export function createTradeFloor(input: {
   if (!mem.includes(tradeFloor.id)) mem.push(tradeFloor.id);
   writeMemberships(input.creator.email, mem);
 
-  return { ok: true, tradeFloor };
+  return { ok: true, tradeFloor, needsApproval: approval };
 }
 
 export function joinTradeFloor(input: {
@@ -98,8 +203,14 @@ export function joinTradeFloor(input: {
   const all = readTradeFloors();
   const tradeFloor = all.find((l) => l.id === code);
   if (!tradeFloor) return { ok: false, error: "No trade floor with that code." };
-  if (tradeFloor.members.length >= 20)
-    return { ok: false, error: "Trade Floor is full (20 members)." };
+  if (tradeFloor.status === "pending_approval")
+    return { ok: false, error: "This floor is awaiting admin approval." };
+  if (tradeFloor.status === "rejected")
+    return { ok: false, error: "This floor was rejected." };
+  if (tradeFloor.status === "ended")
+    return { ok: false, error: "This floor has ended." };
+  if (tradeFloor.members.length >= tradeFloor.memberCap)
+    return { ok: false, error: `Trade floor is full (${tradeFloor.memberCap} members).` };
 
   if (!tradeFloor.members.some((m) => m.email === input.user.email)) {
     tradeFloor.members.push({

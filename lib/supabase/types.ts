@@ -31,6 +31,7 @@ export interface Database {
           created_at: string;
           home_institute: string | null;
           onboarded: boolean;
+          is_admin: boolean;
         };
         Insert: {
           id: string;
@@ -40,6 +41,7 @@ export interface Database {
           created_at?: string;
           home_institute?: string | null;
           onboarded?: boolean;
+          is_admin?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
       };
@@ -90,12 +92,32 @@ export interface Database {
           name: string;
           created_by: string;
           created_at: string;
+          privacy: "public" | "private";
+          start_at: string | null;
+          end_at: string | null;
+          member_cap: number;
+          virtual_capital: number;
+          stock_universe: Json;
+          asset_classes: string[];
+          market_region: "IN" | "UAE" | "US" | "GLOBAL";
+          status: "pending_approval" | "live" | "ended" | "rejected";
+          created_by_kind: "user" | "club" | "ambassador";
         };
         Insert: {
           id?: string;
           name: string;
           created_by: string;
           created_at?: string;
+          privacy?: "public" | "private";
+          start_at?: string | null;
+          end_at?: string | null;
+          member_cap?: number;
+          virtual_capital?: number;
+          stock_universe?: Json;
+          asset_classes?: string[];
+          market_region?: "IN" | "UAE" | "US" | "GLOBAL";
+          status?: "pending_approval" | "live" | "ended" | "rejected";
+          created_by_kind?: "user" | "club" | "ambassador";
         };
         Update: Partial<Database["public"]["Tables"]["trade_floors"]["Insert"]>;
       };
