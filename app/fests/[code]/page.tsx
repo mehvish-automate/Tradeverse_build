@@ -44,6 +44,8 @@ function FestInner() {
 
   const [fest, setFest] = useState<Fest | null | undefined>(undefined);
   const [copied, setCopied] = useState(false);
+  const live = useRealtimeLeaderboards();
+  const [scoresTick, setScoresTick] = useState(0);
 
   useEffect(() => {
     if (!code || !user) return;
@@ -64,6 +66,30 @@ function FestInner() {
       setFest(f);
     }
   }, [code, user]);
+
+  // Pull real cross-user XP for the fest window. Re-pulls on live.tick.
+  useEffect(() => {
+    if (!fest) return;
+    const emails = fest.participants.map((p) => p.email);
+    let cancelled = false;
+    void (async () => {
+      await pullScoresFor(emails, fest.startDate, fest.endDate);
+      if (!cancelled) setScoresTick((t) => t + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fest, live.tick]);
+
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(fest!.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore
+    }
+  }
 
   if (!user || fest === undefined) return null;
   if (fest === null) {
@@ -88,36 +114,10 @@ function FestInner() {
   const club = official ? null : getClub(fest.clubId);
   const inst = club ? getInstitute(club.instituteId) : null;
   const status = festStatus(fest);
-  const live = useRealtimeLeaderboards();
-  const [scoresTick, setScoresTick] = useState(0);
-
-  // Pull real cross-user XP for the fest window. Re-pulls on live.tick.
-  useEffect(() => {
-    if (!fest) return;
-    const emails = fest.participants.map((p) => p.email);
-    let cancelled = false;
-    void (async () => {
-      await pullScoresFor(emails, fest.startDate, fest.endDate);
-      if (!cancelled) setScoresTick((t) => t + 1);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [fest, live.tick]);
 
   void scoresTick;
   const rows = festLeaderboard(fest, user.email);
   const myRank = rows.findIndex((r) => r.email === user.email) + 1;
-
-  async function copyCode() {
-    try {
-      await navigator.clipboard.writeText(fest!.id);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore
-    }
-  }
 
   return (
     <>

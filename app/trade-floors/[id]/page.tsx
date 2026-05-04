@@ -36,8 +36,12 @@ function TradeFloorInner() {
   const router = useRouter();
   const { user } = useSession();
 
-  const [tradeFloor, setTradeFloor] = useState< TradeFloor | null | undefined>(undefined);
+  const [tradeFloor, setTradeFloor] = useState<TradeFloor | null | undefined>(
+    undefined,
+  );
   const [copied, setCopied] = useState(false);
+  const live = useRealtimeLeaderboards();
+  const [scoresTick, setScoresTick] = useState(0);
 
   useEffect(() => {
     if (!user || !params?.id) return;
@@ -60,6 +64,34 @@ function TradeFloorInner() {
     }
   }, [user, params?.id]);
 
+  // Pull real cross-user scores for the current week and re-render.
+  // Re-runs whenever a daily_results row lands anywhere (live.tick).
+  useEffect(() => {
+    if (!tradeFloor) return;
+    const emails = tradeFloor.members.map((m) => m.email);
+    const since = currentWeekStart();
+    const until = new Date().toISOString().slice(0, 10);
+    let cancelled = false;
+    void (async () => {
+      await pullScoresFor(emails, since, until);
+      if (!cancelled) setScoresTick((t) => t + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tradeFloor, live.tick]);
+
+  async function copyCode() {
+    if (!tradeFloor) return;
+    try {
+      await navigator.clipboard.writeText(tradeFloor.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore
+    }
+  }
+
   if (!user || tradeFloor === undefined) return null;
 
   if (tradeFloor === null) {
@@ -80,40 +112,9 @@ function TradeFloorInner() {
     );
   }
 
-  const live = useRealtimeLeaderboards();
-  const [scoresTick, setScoresTick] = useState(0);
-
-  // Pull real cross-user scores for the current week and re-render.
-  // Re-runs whenever a daily_results row lands anywhere (live.tick).
-  useEffect(() => {
-    if (!tradeFloor) return;
-    const emails = tradeFloor.members.map((m) => m.email);
-    const since = currentWeekStart();
-    const until = new Date().toISOString().slice(0, 10);
-    let cancelled = false;
-    void (async () => {
-      await pullScoresFor(emails, since, until);
-      if (!cancelled) setScoresTick((t) => t + 1);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tradeFloor, live.tick]);
-
   void scoresTick;
   const rows = weeklyLeaderboard(tradeFloor, user.email);
   const myRank = rows.findIndex((r) => r.isYou) + 1;
-
-  async function copyCode() {
-    if (!tradeFloor) return;
-    try {
-      await navigator.clipboard.writeText(tradeFloor.id);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore
-    }
-  }
 
   return (
     <>
