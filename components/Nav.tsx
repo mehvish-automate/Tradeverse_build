@@ -19,7 +19,7 @@ const APP_LINKS: NavLink[] = [
   {
     href: "/strategy",
     label: "Strategy Builder",
-    matches: ["/trade", "/portfolios", "/watchlist"],
+    matches: ["/trade", "/portfolios", "/watchlist", "/charts", "/chart"],
   },
   {
     href: "/floors",

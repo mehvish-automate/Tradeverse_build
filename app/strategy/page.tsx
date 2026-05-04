@@ -33,13 +33,19 @@ function Inner() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <HubCard
           href="/trade"
           accent="brand"
           eyebrow="Paper trading"
           title="Trade ticket & L2 book"
           body="Market, limit, stop, stop-limit. Slippage, latency, partial fills. Starts with ₹10L paper cash."
+        />
+        <HubCard
+          href="/charts"
+          eyebrow="Compare"
+          title="Multi-chart view"
+          body="Watch up to 8 symbols side-by-side with inline quick-trade. Trades follow your active competition scope."
         />
         <HubCard
           href="/portfolios"

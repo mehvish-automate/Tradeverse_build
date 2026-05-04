@@ -139,6 +139,16 @@ function Inner() {
             {watched ? "Watching ✓" : "+ Watchlist"}
           </button>
           <Link
+            href={
+              floor
+                ? `/charts?symbols=${symbol}&floor=${floor.id}`
+                : `/charts?symbols=${symbol}`
+            }
+            className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-100 hover:bg-ink-900"
+          >
+            Multi-chart →
+          </Link>
+          <Link
             href={floor ? `/trade?floor=${floor.id}` : "/trade"}
             className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-100 hover:bg-ink-900"
           >
