@@ -7,6 +7,7 @@ import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useSession } from "@/lib/session";
 import { isAdminLocal } from "@/lib/supabase/sync";
+import { Skeleton } from "@/components/Skeleton";
 import {
   listPendingTradeFloors,
   setTradeFloorStatus,
@@ -33,6 +34,18 @@ export default function AdminFloorsPage() {
         </RequireAuth>
       </main>
     </>
+  );
+}
+
+function SkeletonRows({ count }: { count: number }) {
+  return (
+    <ul className="divide-y divide-ink-900 rounded-xl border border-ink-700 bg-ink-900/40">
+      {Array.from({ length: count }, (_, i) => (
+        <li key={i} className="px-5 py-4">
+          <Skeleton lines={2} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -95,11 +108,7 @@ function Inner() {
         </p>
       </div>
 
-      {rows === null && (
-        <div className="rounded-xl border border-ink-700 bg-ink-900/40 p-6 text-sm text-ink-400">
-          Loading…
-        </div>
-      )}
+      {rows === null && <SkeletonRows count={3} />}
 
       {rows && rows.length === 0 && (
         <div className="rounded-xl border border-ink-700 bg-ink-900/40 p-6 text-sm text-ink-400">

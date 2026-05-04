@@ -7,6 +7,7 @@ import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useSession } from "@/lib/session";
 import { isAdminLocal } from "@/lib/supabase/sync";
+import { Skeleton } from "@/components/Skeleton";
 import {
   listPendingFests,
   setFestStatus,
@@ -103,9 +104,13 @@ function Inner() {
       </div>
 
       {rows === null && (
-        <div className="rounded-xl border border-ink-700 bg-ink-900/40 p-6 text-sm text-ink-400">
-          Loading…
-        </div>
+        <ul className="divide-y divide-ink-900 rounded-xl border border-ink-700 bg-ink-900/40">
+          {Array.from({ length: 3 }, (_, i) => (
+            <li key={i} className="px-5 py-4">
+              <Skeleton lines={2} />
+            </li>
+          ))}
+        </ul>
       )}
 
       {rows && rows.length === 0 && (
