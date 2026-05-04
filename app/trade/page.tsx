@@ -122,15 +122,16 @@ function Inner() {
     return () => clearInterval(iv);
   }, [user, refresh, scopeId]);
 
-  // Cross-device realtime is global-only: floor-scoped accounts live
-  // entirely in localStorage for V0.5, so reconciling from cloud would
-  // clobber them. Only subscribe + reconcile when scope is global.
+  // Cross-device realtime — Phase 45.5b makes per-scope mirroring
+  // first-class, so we reconcile both global and floor-scoped accounts.
+  // The reconcile is filtered by the active scopeId, so a global tab
+  // never clobbers scoped state and vice versa.
   const live = useRealtimePaper();
   useEffect(() => {
-    if (!user || scopeId !== GLOBAL_SCOPE) return;
+    if (!user) return;
     let cancelled = false;
     void (async () => {
-      await reconcilePaperFromCloud();
+      await reconcilePaperFromCloud(scopeId);
       if (!cancelled) refresh();
     })();
     return () => {

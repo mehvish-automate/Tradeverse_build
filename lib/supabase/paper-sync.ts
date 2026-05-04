@@ -2,13 +2,16 @@
 
 // Phase 28 — mirror the paper-trading engine (account / holdings / orders)
 // from localStorage into Supabase whenever the user has a live session.
-// Additive: reads still come from localStorage and the local matching
-// engine remains authoritative. Cloud rows are best-effort mirrors so
-// state survives across devices and seeds future server-side execution.
+//
+// Phase 45.5b — every mirror is scope-aware. scopeId === GLOBAL_SCOPE is
+// the user's default account; any other value (a trade-floor id) is a
+// competition-scoped account. Cloud rows carry scope_id and the local
+// keys mirror the same shape (see lib/paper.ts ACCT_KEY / ORDERS_KEY).
 
 import { getBrowserSupabase } from "./client";
 import { writeOrder } from "./writes";
 import {
+  GLOBAL_SCOPE,
   getAccount,
   listOrders,
   type Order,
@@ -23,8 +26,19 @@ async function authedUserId(): Promise<string | null> {
   return data.user?.id ?? null;
 }
 
-/** Upsert the paper_accounts row (cash balance) for this user. */
-export async function syncPaperAccount(): Promise<boolean> {
+const acctKey = (email: string, scope: string) =>
+  scope === GLOBAL_SCOPE
+    ? `tv.paper.account.${email}`
+    : `tv.paper.account.${email}.${scope}`;
+const ordersKey = (email: string, scope: string) =>
+  scope === GLOBAL_SCOPE
+    ? `tv.paper.orders.${email}`
+    : `tv.paper.orders.${email}.${scope}`;
+
+/** Upsert the paper_accounts row for this (user, scope). */
+export async function syncPaperAccount(
+  scopeId: string = GLOBAL_SCOPE,
+): Promise<boolean> {
   const supabase = getBrowserSupabase();
   if (!supabase) return false;
   const userId = await authedUserId();
@@ -33,23 +47,28 @@ export async function syncPaperAccount(): Promise<boolean> {
   const local = getCurrentUser();
   if (!local) return false;
 
-  const acct = getAccount(local.email);
+  const acct = getAccount(local.email, scopeId);
   const row = {
     user_id: userId,
+    scope_id: scopeId,
     cash: acct.cash,
   };
   const { error } = await (supabase.from("paper_accounts") as unknown as {
-    upsert: (row: unknown) => Promise<{ error: { message: string } | null }>;
-  }).upsert(row);
+    upsert: (
+      row: unknown,
+      opts: { onConflict: string },
+    ) => Promise<{ error: { message: string } | null }>;
+  }).upsert(row, { onConflict: "user_id,scope_id" });
   return !error;
 }
 
 /**
  * Mirror holdings as a full reconciliation: upsert each row, then delete
- * any server rows for symbols the user no longer holds. Keeps the cloud
- * exactly in sync with localStorage after a fill, sale, or reset.
+ * any server rows for symbols the user no longer holds in this scope.
  */
-export async function syncPaperHoldings(): Promise<boolean> {
+export async function syncPaperHoldings(
+  scopeId: string = GLOBAL_SCOPE,
+): Promise<boolean> {
   const supabase = getBrowserSupabase();
   if (!supabase) return false;
   const userId = await authedUserId();
@@ -58,12 +77,13 @@ export async function syncPaperHoldings(): Promise<boolean> {
   const local = getCurrentUser();
   if (!local) return false;
 
-  const acct = getAccount(local.email);
+  const acct = getAccount(local.email, scopeId);
   const symbols = acct.holdings.map((h) => h.symbol);
 
   if (acct.holdings.length > 0) {
     const rows = acct.holdings.map((h) => ({
       user_id: userId,
+      scope_id: scopeId,
       symbol: h.symbol,
       shares: h.shares,
       avg_price: h.avgPrice,
@@ -73,40 +93,43 @@ export async function syncPaperHoldings(): Promise<boolean> {
         rows: unknown,
         opts: { onConflict: string },
       ) => Promise<{ error: { message: string } | null }>;
-    }).upsert(rows, { onConflict: "user_id,symbol" });
+    }).upsert(rows, { onConflict: "user_id,scope_id,symbol" });
     if (upErr) return false;
   }
 
-  // Drop any symbols the user no longer holds.
+  // Drop any symbols the user no longer holds (within this scope).
   const del = supabase.from("paper_holdings") as unknown as {
     delete: () => {
       eq: (
         col: string,
         val: string,
       ) => {
-        not: (
-          col: string,
-          op: string,
-          vals: string[],
-        ) => Promise<{ error: { message: string } | null }>;
-      } & Promise<{ error: { message: string } | null }>;
+        eq: (col: string, val: string) => {
+          not: (
+            col: string,
+            op: string,
+            vals: string[],
+          ) => Promise<{ error: { message: string } | null }>;
+        } & Promise<{ error: { message: string } | null }>;
+      };
     };
   };
+  const baseDel = del.delete().eq("user_id", userId).eq("scope_id", scopeId);
   if (symbols.length > 0) {
-    const { error: delErr } = await del
-      .delete()
-      .eq("user_id", userId)
-      .not("symbol", "in", symbols);
+    const { error: delErr } = await baseDel.not("symbol", "in", symbols);
     if (delErr) return false;
   } else {
-    const { error: delErr } = await del.delete().eq("user_id", userId);
+    const { error: delErr } = await baseDel;
     if (delErr) return false;
   }
   return true;
 }
 
 /** Mirror a single order row (called after place / process / cancel). */
-export async function mirrorOrder(order: Order): Promise<boolean> {
+export async function mirrorOrder(
+  order: Order,
+  scopeId: string = GLOBAL_SCOPE,
+): Promise<boolean> {
   return writeOrder({
     id: order.id,
     symbol: order.symbol,
@@ -120,26 +143,27 @@ export async function mirrorOrder(order: Order): Promise<boolean> {
     status: order.status,
     fills: order.fills,
     placedAt: order.placedAt,
+    scopeId,
   });
 }
 
 /** Mirror account + holdings together — call after every fill / reset. */
-export async function mirrorAccountState(): Promise<boolean> {
-  const a = await syncPaperAccount();
-  const h = await syncPaperHoldings();
+export async function mirrorAccountState(
+  scopeId: string = GLOBAL_SCOPE,
+): Promise<boolean> {
+  const a = await syncPaperAccount(scopeId);
+  const h = await syncPaperHoldings(scopeId);
   return a && h;
 }
 
 /**
  * Pull the user's paper state down into localStorage on first auth so
  * a phone session shows up on desktop. Local wins when both have data
- * for the same key (avoids clobbering an in-progress run).
+ * for the same key.
  */
-export async function pullPaperState(): Promise<{
-  account: boolean;
-  holdings: number;
-  orders: number;
-}> {
+export async function pullPaperState(
+  scopeId: string = GLOBAL_SCOPE,
+): Promise<{ account: boolean; holdings: number; orders: number }> {
   const result = { account: false, holdings: 0, orders: 0 };
   const supabase = getBrowserSupabase();
   if (!supabase) return result;
@@ -151,41 +175,45 @@ export async function pullPaperState(): Promise<{
   type AccountRow = { cash: number };
   const accountRes = await (supabase.from("paper_accounts") as unknown as {
     select: (cols: string) => {
-      eq: (
-        col: string,
-        val: string,
-      ) => {
-        maybeSingle: () => Promise<{
-          data: AccountRow | null;
-          error: { message: string } | null;
-        }>;
+      eq: (col: string, val: string) => {
+        eq: (
+          col: string,
+          val: string,
+        ) => {
+          maybeSingle: () => Promise<{
+            data: AccountRow | null;
+            error: { message: string } | null;
+          }>;
+        };
       };
     };
   })
     .select("cash")
     .eq("user_id", userId)
+    .eq("scope_id", scopeId)
     .maybeSingle();
 
   type HoldingRow = { symbol: string; shares: number; avg_price: number };
   const holdingsRes = await (supabase.from("paper_holdings") as unknown as {
     select: (cols: string) => {
-      eq: (
-        col: string,
-        val: string,
-      ) => Promise<{
-        data: HoldingRow[] | null;
-        error: { message: string } | null;
-      }>;
+      eq: (col: string, val: string) => {
+        eq: (
+          col: string,
+          val: string,
+        ) => Promise<{
+          data: HoldingRow[] | null;
+          error: { message: string } | null;
+        }>;
+      };
     };
   })
     .select("symbol, shares, avg_price")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("scope_id", scopeId);
 
   if (accountRes.error || holdingsRes.error) return result;
 
-  // Merge into localStorage. We only overwrite when the server has data
-  // and local is empty / fresh; otherwise the local engine is canonical.
-  const ACCT_KEY = `tv.paper.account.${local.email}`;
+  const ACCT_KEY = acctKey(local.email, scopeId);
   const raw = localStorage.getItem(ACCT_KEY);
   const localAcct: PaperAccount | null = raw
     ? (JSON.parse(raw) as PaperAccount)
@@ -204,6 +232,7 @@ export async function pullPaperState(): Promise<{
         avgPrice: Number(r.avg_price),
       })),
       createdAt: Date.now(),
+      startingCash: localAcct?.startingCash,
     };
     localStorage.setItem(ACCT_KEY, JSON.stringify(acct));
     result.account = true;
@@ -228,23 +257,26 @@ export async function pullPaperState(): Promise<{
   };
   const ordersRes = await (supabase.from("orders") as unknown as {
     select: (cols: string) => {
-      eq: (
-        col: string,
-        val: string,
-      ) => Promise<{
-        data: OrderRow[] | null;
-        error: { message: string } | null;
-      }>;
+      eq: (col: string, val: string) => {
+        eq: (
+          col: string,
+          val: string,
+        ) => Promise<{
+          data: OrderRow[] | null;
+          error: { message: string } | null;
+        }>;
+      };
     };
   })
     .select(
       "id, symbol, side, kind, qty, filled_qty, avg_fill_price, limit_price, stop_price, status, placed_at, last_updated, fills",
     )
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("scope_id", scopeId);
 
   if (!ordersRes.error && ordersRes.data) {
-    const ORDERS_KEY = `tv.paper.orders.${local.email}`;
-    const localOrders = listOrders(local.email);
+    const ORDERS_KEY = ordersKey(local.email, scopeId);
+    const localOrders = listOrders(local.email, scopeId);
     const haveIds = new Set(localOrders.map((o) => o.id));
     const additions: Order[] = [];
     for (const row of ordersRes.data) {
@@ -276,20 +308,12 @@ export async function pullPaperState(): Promise<{
 }
 
 /**
- * Phase 38 — realtime reconcile. Stronger than pullPaperState: when
- * a `orders` or `paper_holdings` change lands via the realtime channel,
- * cloud is authoritative. We overwrite the order rows we have locally
- * (so a fill that happened on another device flips our `pending` →
- * `filled`) and replace cash + holdings wholesale.
- *
- * Used only on realtime ticks. First-load still uses the conservative
- * pullPaperState so a brand-new device doesn't clobber an in-progress
- * local engine state.
+ * Phase 38 / 45.5b — realtime reconcile, scope-aware. Cloud is authoritative
+ * for shared order ids and the account/holdings within the given scope.
  */
-export async function reconcilePaperFromCloud(): Promise<{
-  ordersChanged: number;
-  accountChanged: boolean;
-}> {
+export async function reconcilePaperFromCloud(
+  scopeId: string = GLOBAL_SCOPE,
+): Promise<{ ordersChanged: number; accountChanged: boolean }> {
   const out = { ordersChanged: 0, accountChanged: false };
   const supabase = getBrowserSupabase();
   if (!supabase) return out;
@@ -298,42 +322,47 @@ export async function reconcilePaperFromCloud(): Promise<{
   const local = getCurrentUser();
   if (!local) return out;
 
-  // 1. Account + holdings.
   type AccountRow = { cash: number };
   const accountRes = await (supabase.from("paper_accounts") as unknown as {
     select: (cols: string) => {
-      eq: (
-        col: string,
-        val: string,
-      ) => {
-        maybeSingle: () => Promise<{
-          data: AccountRow | null;
-          error: { message: string } | null;
-        }>;
+      eq: (col: string, val: string) => {
+        eq: (
+          col: string,
+          val: string,
+        ) => {
+          maybeSingle: () => Promise<{
+            data: AccountRow | null;
+            error: { message: string } | null;
+          }>;
+        };
       };
     };
   })
     .select("cash")
     .eq("user_id", userId)
+    .eq("scope_id", scopeId)
     .maybeSingle();
 
   type HoldingRow = { symbol: string; shares: number; avg_price: number };
   const holdingsRes = await (supabase.from("paper_holdings") as unknown as {
     select: (cols: string) => {
-      eq: (
-        col: string,
-        val: string,
-      ) => Promise<{
-        data: HoldingRow[] | null;
-        error: { message: string } | null;
-      }>;
+      eq: (col: string, val: string) => {
+        eq: (
+          col: string,
+          val: string,
+        ) => Promise<{
+          data: HoldingRow[] | null;
+          error: { message: string } | null;
+        }>;
+      };
     };
   })
     .select("symbol, shares, avg_price")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("scope_id", scopeId);
 
   if (!accountRes.error && !holdingsRes.error && accountRes.data) {
-    const ACCT_KEY = `tv.paper.account.${local.email}`;
+    const ACCT_KEY = acctKey(local.email, scopeId);
     const raw = localStorage.getItem(ACCT_KEY);
     const localAcct: PaperAccount | null = raw
       ? (JSON.parse(raw) as PaperAccount)
@@ -346,13 +375,12 @@ export async function reconcilePaperFromCloud(): Promise<{
         avgPrice: Number(r.avg_price),
       })),
       createdAt: localAcct?.createdAt ?? Date.now(),
+      startingCash: localAcct?.startingCash,
     };
     localStorage.setItem(ACCT_KEY, JSON.stringify(next));
     out.accountChanged = true;
   }
 
-  // 2. Orders — overwrite by id; preserve any local-only rows (just-placed
-  //    on this tab whose insert hasn't acked yet).
   type OrderRow = {
     id: string;
     symbol: string;
@@ -370,20 +398,26 @@ export async function reconcilePaperFromCloud(): Promise<{
   };
   const ordersRes = await (supabase.from("orders") as unknown as {
     select: (cols: string) => {
-      eq: (
-        col: string,
-        val: string,
-      ) => Promise<{ data: OrderRow[] | null; error: { message: string } | null }>;
+      eq: (col: string, val: string) => {
+        eq: (
+          col: string,
+          val: string,
+        ) => Promise<{
+          data: OrderRow[] | null;
+          error: { message: string } | null;
+        }>;
+      };
     };
   })
     .select(
       "id, symbol, side, kind, qty, filled_qty, avg_fill_price, limit_price, stop_price, status, placed_at, last_updated, fills",
     )
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("scope_id", scopeId);
 
   if (!ordersRes.error && ordersRes.data) {
-    const ORDERS_KEY = `tv.paper.orders.${local.email}`;
-    const localOrders = listOrders(local.email);
+    const ORDERS_KEY = ordersKey(local.email, scopeId);
+    const localOrders = listOrders(local.email, scopeId);
     const localById = new Map(localOrders.map((o) => [o.id, o] as const));
     const cloudById = new Map<string, Order>();
     for (const row of ordersRes.data) {
@@ -403,9 +437,6 @@ export async function reconcilePaperFromCloud(): Promise<{
         fills: Array.isArray(row.fills) ? (row.fills as Order["fills"]) : [],
       });
     }
-    // Merge: cloud wins for shared ids, local-only ids stay (just placed,
-    // mirror still in-flight). Count "changed" = ids whose status or
-    // fills differ from local.
     const merged: Order[] = [];
     let changed = 0;
     const seen = new Set<string>();
@@ -428,5 +459,106 @@ export async function reconcilePaperFromCloud(): Promise<{
     out.ordersChanged = changed;
   }
 
+  return out;
+}
+
+// --- Phase 45.5b — competitor cloud P&L for the floor leaderboard -------
+
+export type CompetitorAccount = {
+  email: string;
+  cash: number;
+  holdings: { symbol: string; shares: number; avgPrice: number }[];
+};
+
+/**
+ * Fetch every member's scoped paper account + holdings for one floor.
+ * Used by competitionLeaderboard's async pull so other members' P&L is
+ * real (when they've traded with cloud sync on) instead of demo-seeded.
+ *
+ * Resolves member emails → user_ids via profiles, then ranges scope_id.
+ */
+export async function pullCompetitorAccounts(
+  memberEmails: string[],
+  scopeId: string,
+): Promise<CompetitorAccount[]> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return [];
+  if (!scopeId || scopeId === GLOBAL_SCOPE) return [];
+
+  const emails = Array.from(
+    new Set(memberEmails.map((e) => e.trim().toLowerCase()).filter(Boolean)),
+  );
+  if (emails.length === 0) return [];
+
+  type ProfileRow = { id: string; email: string };
+  const profilesRes = await (supabase.from("profiles") as unknown as {
+    select: (cols: string) => {
+      in: (
+        col: string,
+        vals: string[],
+      ) => Promise<{ data: ProfileRow[] | null; error: { message: string } | null }>;
+    };
+  })
+    .select("id, email")
+    .in("email", emails);
+  if (profilesRes.error || !profilesRes.data) return [];
+  const idToEmail = new Map<string, string>();
+  for (const p of profilesRes.data) idToEmail.set(p.id, p.email);
+  const userIds = profilesRes.data.map((p) => p.id);
+  if (userIds.length === 0) return [];
+
+  type AcctRow = { user_id: string; cash: number };
+  const accountsRes = await (supabase.from("paper_accounts") as unknown as {
+    select: (cols: string) => {
+      in: (col: string, vals: string[]) => {
+        eq: (
+          col: string,
+          val: string,
+        ) => Promise<{ data: AcctRow[] | null; error: { message: string } | null }>;
+      };
+    };
+  })
+    .select("user_id, cash")
+    .in("user_id", userIds)
+    .eq("scope_id", scopeId);
+  if (accountsRes.error) return [];
+
+  type HoldRow = {
+    user_id: string;
+    symbol: string;
+    shares: number;
+    avg_price: number;
+  };
+  const holdingsRes = await (supabase.from("paper_holdings") as unknown as {
+    select: (cols: string) => {
+      in: (col: string, vals: string[]) => {
+        eq: (
+          col: string,
+          val: string,
+        ) => Promise<{ data: HoldRow[] | null; error: { message: string } | null }>;
+      };
+    };
+  })
+    .select("user_id, symbol, shares, avg_price")
+    .in("user_id", userIds)
+    .eq("scope_id", scopeId);
+  if (holdingsRes.error) return [];
+
+  const out: CompetitorAccount[] = [];
+  for (const a of accountsRes.data ?? []) {
+    const email = idToEmail.get(a.user_id);
+    if (!email) continue;
+    out.push({
+      email,
+      cash: Number(a.cash),
+      holdings: (holdingsRes.data ?? [])
+        .filter((h) => h.user_id === a.user_id)
+        .map((h) => ({
+          symbol: h.symbol,
+          shares: h.shares,
+          avgPrice: Number(h.avg_price),
+        })),
+    });
+  }
   return out;
 }

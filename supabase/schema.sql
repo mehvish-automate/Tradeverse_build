@@ -232,6 +232,40 @@ create table if not exists public.orders (
   fills            jsonb not null default '[]'::jsonb
 );
 
+-- Phase 45.5b — paper accounts can be scoped to a virtual trading
+-- competition (a trade-floor id). Existing rows default to the
+-- 'global' sentinel which preserves pre-Phase-45.5b behaviour.
+alter table public.paper_accounts
+  add column if not exists scope_id text not null default 'global';
+alter table public.paper_holdings
+  add column if not exists scope_id text not null default 'global';
+alter table public.orders
+  add column if not exists scope_id text not null default 'global';
+
+-- Swap the existing PKs to composite (user_id, scope_id, ...). These
+-- are guarded with `do $$` so re-running this migration is safe.
+do $$
+begin
+  alter table public.paper_accounts drop constraint if exists paper_accounts_pkey;
+exception when others then null;
+end $$;
+do $$
+begin
+  alter table public.paper_accounts add primary key (user_id, scope_id);
+exception when others then null;
+end $$;
+
+do $$
+begin
+  alter table public.paper_holdings drop constraint if exists paper_holdings_pkey;
+exception when others then null;
+end $$;
+do $$
+begin
+  alter table public.paper_holdings add primary key (user_id, scope_id, symbol);
+exception when others then null;
+end $$;
+
 -- --- Watchlist (Phase 30) ---
 create table if not exists public.watchlist_items (
   user_id     uuid not null references auth.users on delete cascade,
@@ -706,6 +740,9 @@ create index if not exists fests_club_idx               on public.fests(club_id)
 create index if not exists fests_status_idx             on public.fests(status, created_at desc);
 create index if not exists floor_posts_club_idx         on public.floor_posts(club_id, created_at desc);
 create index if not exists orders_user_idx              on public.orders(user_id, placed_at desc);
+create index if not exists orders_scope_idx             on public.orders(user_id, scope_id, placed_at desc);
+create index if not exists paper_accounts_scope_idx     on public.paper_accounts(scope_id, user_id);
+create index if not exists paper_holdings_scope_idx     on public.paper_holdings(scope_id, user_id);
 create index if not exists portfolios_user_idx          on public.portfolios(user_id, created_at desc);
 create index if not exists trade_floor_members_user_idx on public.trade_floor_members(user_id);
 create index if not exists trade_floors_status_idx      on public.trade_floors(status, created_at desc);

@@ -19,9 +19,13 @@ import {
   competitionScheduleStatus,
   formatRupees,
   formatWhen,
+  pullCompetitorPnL,
 } from "@/lib/competitions";
 import { useSession } from "@/lib/session";
-import { useRealtimeLeaderboards } from "@/lib/supabase/realtime";
+import {
+  useRealtimeLeaderboards,
+  useRealtimePaper,
+} from "@/lib/supabase/realtime";
 import { pullScoresFor } from "@/lib/supabase/scores-sync";
 
 type LeaderboardMode = "pnl" | "xp";
@@ -54,7 +58,9 @@ function TradeFloorInner() {
   const [copied, setCopied] = useState(false);
   const [mode, setMode] = useState<LeaderboardMode>("pnl");
   const live = useRealtimeLeaderboards();
+  const livePaper = useRealtimePaper();
   const [scoresTick, setScoresTick] = useState(0);
+  const [pnlTick, setPnlTick] = useState(0);
 
   useEffect(() => {
     if (!user || !params?.id) return;
@@ -99,6 +105,22 @@ function TradeFloorInner() {
     };
   }, [tradeFloor, live.tick]);
 
+  // Phase 45.5b — pull competitor cloud accounts so the P&L leaderboard
+  // shows real numbers for everyone who's traded. Re-runs on every
+  // realtime tick on paper_holdings (anyone in the floor placing or
+  // filling an order).
+  useEffect(() => {
+    if (!tradeFloor || !user) return;
+    let cancelled = false;
+    void (async () => {
+      await pullCompetitorPnL(tradeFloor, user.email);
+      if (!cancelled) setPnlTick((t) => t + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tradeFloor, user, livePaper.tick]);
+
   async function copyCode() {
     if (!tradeFloor) return;
     try {
@@ -119,7 +141,9 @@ function TradeFloorInner() {
   const pnlRows = useMemo(
     () =>
       tradeFloor && user ? competitionLeaderboard(tradeFloor, user.email) : [],
-    [tradeFloor, user],
+    // pnlTick included so the memo refreshes after a competitor pull lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tradeFloor, user, pnlTick],
   );
 
   if (!user || tradeFloor === undefined) return null;
@@ -291,9 +315,9 @@ function TradeFloorInner() {
       </div>
 
       <p className="mt-4 text-xs text-ink-500">
-        Your P&amp;L is computed against this competition&apos;s scoped paper
-        account — fresh capital per floor. Other members&apos; P&amp;L shown
-        here is demo data until per-floor cloud sync lands.
+        Live P&amp;L is computed against each member&apos;s competition-scoped
+        paper account. Members who haven&apos;t traded yet show a
+        deterministic demo seed until they place their first order.
       </p>
     </>
   );

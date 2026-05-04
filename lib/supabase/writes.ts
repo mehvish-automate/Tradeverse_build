@@ -313,6 +313,8 @@ export async function writeOrder(input: {
   avgFillPrice: number;
   fills: unknown[];
   placedAt: number;
+  /** Phase 45.5b: 'global' for the default account, floor.id for scoped. */
+  scopeId?: string;
 }): Promise<boolean> {
   const supabase = getBrowserSupabase();
   if (!supabase) return false;
@@ -332,6 +334,7 @@ export async function writeOrder(input: {
     status: input.status,
     placed_at: new Date(input.placedAt).toISOString(),
     fills: input.fills,
+    scope_id: input.scopeId ?? "global",
   };
   const { error } = await (supabase.from("orders") as unknown as {
     upsert: (row: unknown) => Promise<{ error: { message: string } | null }>;

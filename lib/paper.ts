@@ -17,20 +17,20 @@
 import { bookAtPrice, L2Level } from "./orderbook";
 import { price } from "./stocks";
 
-// Phase 28 — fire-and-forget cloud mirrors. Imported lazily to keep
-// paper.ts SSR-safe and to avoid eager evaluation of the supabase client.
-async function cloudMirrorOrder(order: Order) {
+// Phase 28 / 45.5b — fire-and-forget cloud mirrors, scope-aware.
+// Imported lazily to keep paper.ts SSR-safe.
+async function cloudMirrorOrder(order: Order, scopeId: string) {
   try {
     const { mirrorOrder } = await import("./supabase/paper-sync");
-    await mirrorOrder(order);
+    await mirrorOrder(order, scopeId);
   } catch {
     // Cloud mirror is best-effort; localStorage stays authoritative.
   }
 }
-async function cloudMirrorAccount() {
+async function cloudMirrorAccount(scopeId: string) {
   try {
     const { mirrorAccountState } = await import("./supabase/paper-sync");
-    await mirrorAccountState();
+    await mirrorAccountState(scopeId);
   } catch {
     // best-effort
   }
@@ -133,6 +133,10 @@ function saveAccount(
  * doesn't already exist. No-op if the account is already in storage.
  * Used by the floor-scoped trade page to seed the competition's
  * virtual capital on first visit.
+ *
+ * On fresh creation (Phase 45.5b), fire-and-forget the cloud write so
+ * other members can pull this user's account into the floor leaderboard
+ * even before they place their first trade.
  */
 export function ensureAccount(
   email: string,
@@ -150,6 +154,12 @@ export function ensureAccount(
   }
   const acct = emptyAccount(startingCash);
   localStorage.setItem(ACCT_KEY(email, scopeId), JSON.stringify(acct));
+  // Fresh scoped account → push to cloud so they appear in the floor
+  // leaderboard immediately. Skip for the global account (already
+  // created server-side by the auth trigger).
+  if (scopeId !== GLOBAL_SCOPE) {
+    void cloudMirrorAccount(scopeId);
+  }
   return acct;
 }
 
@@ -168,7 +178,8 @@ export function resetAccount(email: string, scopeId: string = GLOBAL_SCOPE) {
   const startingCash = existing?.startingCash ?? STARTING_CASH;
   saveAccount(email, emptyAccount(startingCash), scopeId);
   localStorage.setItem(ORDERS_KEY(email, scopeId), "[]");
-  if (scopeId === GLOBAL_SCOPE) void cloudMirrorAccount();
+  // Phase 45.5b: cloud mirrors fire for any scope (scope_id column).
+  void cloudMirrorAccount(scopeId);
 }
 
 // --- Orders ---
@@ -301,7 +312,7 @@ export function placeOrder(
   const all = readOrders(email, scopeId);
   all.push(order);
   writeOrders(email, all, scopeId);
-  if (scopeId === GLOBAL_SCOPE) void cloudMirrorOrder(order);
+  void cloudMirrorOrder(order, scopeId);
 
   // Deterministic-but-feels-real latency.
   const latency = 250 + Math.floor(Math.random() * 250);
@@ -325,7 +336,7 @@ export function cancelOrder(
   o.status = "cancelled";
   o.lastUpdated = Date.now();
   writeOrders(email, all, scopeId);
-  if (scopeId === GLOBAL_SCOPE) void cloudMirrorOrder(o);
+  void cloudMirrorOrder(o, scopeId);
   return true;
 }
 
@@ -413,10 +424,8 @@ function finalizeOrder(
   order.status = totalFilled >= order.qty ? "filled" : "partial";
   order.lastUpdated = Date.now();
   writeOrders(email, all, scopeId);
-  if (scopeId === GLOBAL_SCOPE) {
-    void cloudMirrorOrder(order);
-    void cloudMirrorAccount();
-  }
+  void cloudMirrorOrder(order, scopeId);
+  void cloudMirrorAccount(scopeId);
   return order;
 }
 

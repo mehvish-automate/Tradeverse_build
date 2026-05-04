@@ -331,11 +331,13 @@ export interface Database {
           user_id: string;
           cash: number;
           created_at: string;
+          scope_id: string;
         };
         Insert: {
           user_id: string;
           cash?: number;
           created_at?: string;
+          scope_id?: string;
         };
         Update: Partial<Database["public"]["Tables"]["paper_accounts"]["Insert"]>;
       };
@@ -346,10 +348,17 @@ export interface Database {
           symbol: string;
           shares: number;
           avg_price: number;
+          scope_id: string;
         };
-        Insert: Database["public"]["Tables"]["paper_holdings"]["Row"];
+        Insert: {
+          user_id: string;
+          symbol: string;
+          shares: number;
+          avg_price: number;
+          scope_id?: string;
+        };
         Update: Partial<
-          Database["public"]["Tables"]["paper_holdings"]["Row"]
+          Database["public"]["Tables"]["paper_holdings"]["Insert"]
         >;
       };
 
@@ -369,6 +378,7 @@ export interface Database {
           placed_at: string;
           last_updated: string;
           fills: Json;
+          scope_id: string;
         };
         Insert: {
           id?: string;
@@ -385,6 +395,7 @@ export interface Database {
           placed_at?: string;
           last_updated?: string;
           fills?: Json;
+          scope_id?: string;
         };
         Update: Partial<Database["public"]["Tables"]["orders"]["Insert"]>;
       };
