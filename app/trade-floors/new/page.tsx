@@ -16,6 +16,7 @@ import {
   needsAdminApproval,
 } from "@/lib/tradeFloors";
 import { writeTradeFloor } from "@/lib/supabase/writes";
+import { SECTORS, STOCKS } from "@/lib/stocks";
 
 export default function NewTradeFloorPage() {
   return (
@@ -48,8 +49,10 @@ function Inner() {
   const [memberCap, setMemberCap] = useState(15);
   const [virtualLakhs, setVirtualLakhs] = useState(10); // 1L–100L
   const [universeKind, setUniverseKind] = useState<
-    "nifty50" | "nifty100" | "all"
+    "nifty50" | "nifty100" | "all" | "custom-sectors" | "handpicked"
   >("nifty50");
+  const [pickedSectors, setPickedSectors] = useState<string[]>([]);
+  const [pickedSymbols, setPickedSymbols] = useState<string[]>([]);
   const [assetClasses, setAssetClasses] = useState<AssetClass[]>(["stocks"]);
   const [region, setRegion] = useState<MarketRegion>("IN");
 
@@ -77,7 +80,24 @@ function Inner() {
 
     const startAt = new Date(startStr).getTime();
     const endAt = new Date(endStr).getTime();
-    const universe: StockUniverse = { kind: universeKind };
+    let universe: StockUniverse;
+    if (universeKind === "custom-sectors") {
+      if (pickedSectors.length === 0) {
+        setError("Pick at least one sector for the custom universe.");
+        setSubmitting(false);
+        return;
+      }
+      universe = { kind: "custom-sectors", sectors: pickedSectors };
+    } else if (universeKind === "handpicked") {
+      if (pickedSymbols.length === 0) {
+        setError("Handpick at least one symbol for the universe.");
+        setSubmitting(false);
+        return;
+      }
+      universe = { kind: "handpicked", symbols: pickedSymbols };
+    } else {
+      universe = { kind: universeKind };
+    }
     const virtualCapital = virtualLakhs * 100_000;
 
     const r = createTradeFloor({
@@ -237,8 +257,116 @@ function Inner() {
               { value: "nifty50", label: "NIFTY 50" },
               { value: "nifty100", label: "NIFTY 100" },
               { value: "all", label: "All listed" },
+              {
+                value: "custom-sectors",
+                label: "Custom sectors",
+                blurb: "Pick which sectors are tradable.",
+              },
+              {
+                value: "handpicked",
+                label: "Handpick stocks",
+                blurb: "Curate exactly which symbols can be traded.",
+              },
             ]}
           />
+
+          {universeKind === "custom-sectors" && (
+            <div className="mt-3 rounded-lg border border-ink-700 bg-ink-950 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-medium text-ink-300">
+                  Sectors ({pickedSectors.length})
+                </span>
+                <div className="flex gap-2 text-[10px] uppercase tracking-wider">
+                  <button
+                    type="button"
+                    onClick={() => setPickedSectors([...SECTORS])}
+                    className="text-brand-300 hover:underline"
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPickedSectors([])}
+                    className="text-ink-400 hover:underline"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {SECTORS.map((s) => {
+                  const on = pickedSectors.includes(s);
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() =>
+                        setPickedSectors((prev) =>
+                          on ? prev.filter((x) => x !== s) : [...prev, s],
+                        )
+                      }
+                      className={
+                        "rounded-md border px-2.5 py-1 text-xs transition " +
+                        (on
+                          ? "border-brand-500 bg-brand-500/10 text-brand-200"
+                          : "border-ink-700 text-ink-300 hover:border-ink-500")
+                      }
+                    >
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {universeKind === "handpicked" && (
+            <div className="mt-3 rounded-lg border border-ink-700 bg-ink-950 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-medium text-ink-300">
+                  Symbols ({pickedSymbols.length})
+                </span>
+                <div className="flex gap-2 text-[10px] uppercase tracking-wider">
+                  <button
+                    type="button"
+                    onClick={() => setPickedSymbols([])}
+                    className="text-ink-400 hover:underline"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-56 overflow-y-auto pr-1">
+                <div className="flex flex-wrap gap-1.5">
+                  {STOCKS.map((s) => {
+                    const on = pickedSymbols.includes(s.symbol);
+                    return (
+                      <button
+                        key={s.symbol}
+                        type="button"
+                        onClick={() =>
+                          setPickedSymbols((prev) =>
+                            on
+                              ? prev.filter((x) => x !== s.symbol)
+                              : [...prev, s.symbol],
+                          )
+                        }
+                        className={
+                          "rounded-md border px-2 py-1 font-mono text-[11px] transition " +
+                          (on
+                            ? "border-brand-500 bg-brand-500/10 text-brand-200"
+                            : "border-ink-700 text-ink-300 hover:border-ink-500")
+                        }
+                        title={`${s.name} · ${s.sector}`}
+                      >
+                        {s.symbol}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
           <div className="mt-4">
             <div className="mb-1.5 block text-xs font-medium text-ink-300">
               Asset classes
