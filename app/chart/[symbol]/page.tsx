@@ -212,24 +212,50 @@ function Inner() {
         </div>
       </section>
 
-      <section className="mt-6 flex flex-wrap items-center gap-2">
-        <span className="text-xs text-ink-500">Other symbols:</span>
-        {STOCKS.slice(0, 10).map((s) => (
+      <section className="mt-6 rounded-2xl border border-ink-700 bg-ink-900/40 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
+              Compare
+            </div>
+            <p className="mt-1 text-sm text-ink-300">
+              Want a side-by-side view? Open up to 8 charts at once and trade
+              from any of them.
+            </p>
+          </div>
           <Link
-            key={s.symbol}
             href={
-              floor ? `/chart/${s.symbol}?floor=${floor.id}` : `/chart/${s.symbol}`
+              floor
+                ? `/charts?symbols=${symbol}&floor=${floor.id}`
+                : `/charts?symbols=${symbol}`
             }
-            className={
-              "rounded-md border px-2 py-1 text-xs transition " +
-              (s.symbol === symbol
-                ? "border-brand-500 bg-brand-500/10 text-brand-200"
-                : "border-ink-700 text-ink-300 hover:border-ink-500")
-            }
+            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-brand-300"
           >
-            {s.symbol}
+            Open multi-chart →
           </Link>
-        ))}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-ink-500">Quick switch:</span>
+          {STOCKS.slice(0, 10).map((s) => (
+            <Link
+              key={s.symbol}
+              href={
+                floor
+                  ? `/chart/${s.symbol}?floor=${floor.id}`
+                  : `/chart/${s.symbol}`
+              }
+              className={
+                "rounded-md border px-2 py-1 text-xs transition " +
+                (s.symbol === symbol
+                  ? "border-brand-500 bg-brand-500/10 text-brand-200"
+                  : "border-ink-700 text-ink-300 hover:border-ink-500")
+              }
+            >
+              {s.symbol}
+            </Link>
+          ))}
+        </div>
       </section>
     </>
   );
