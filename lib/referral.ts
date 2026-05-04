@@ -220,21 +220,31 @@ export function trackShareClick(
   resourceId: string,
 ): void {
   const inviterEmail = lookupInviter(inviterCode);
-  if (!inviterEmail) return;
-  const all = readShares(inviterEmail);
-  const k = shareKey(kind, resourceId);
-  const cur = all[k] ?? {
-    kind,
-    resourceId: resourceId.toUpperCase(),
-    clicks: 0,
-    joins: 0,
-    lastClickAt: 0,
-    lastJoinAt: 0,
-  };
-  cur.clicks += 1;
-  cur.lastClickAt = Date.now();
-  all[k] = cur;
-  writeShares(inviterEmail, all);
+  if (inviterEmail) {
+    const all = readShares(inviterEmail);
+    const k = shareKey(kind, resourceId);
+    const cur = all[k] ?? {
+      kind,
+      resourceId: resourceId.toUpperCase(),
+      clicks: 0,
+      joins: 0,
+      lastClickAt: 0,
+      lastJoinAt: 0,
+    };
+    cur.clicks += 1;
+    cur.lastClickAt = Date.now();
+    all[k] = cur;
+    writeShares(inviterEmail, all);
+  }
+  // Phase 48.5 — also fire-and-forget the cloud insert. The cloud
+  // resolution doesn't need a local refmap entry, so this works even
+  // when the inviter and clicker have never met on this device.
+  void (async () => {
+    try {
+      const { mirrorShareClick } = await import("./supabase/share-sync");
+      await mirrorShareClick(inviterCode, kind, resourceId);
+    } catch { /* best-effort */ }
+  })();
 }
 
 /**
@@ -259,23 +269,39 @@ export function attributeShareJoin(
   const flag = JOIN_ATTRIBUTED(inviteeEmail, kind, resourceId);
   if (localStorage.getItem(flag)) return false;
   const inviterEmail = lookupInviter(inviterCode);
-  if (!inviterEmail) return false;
-  if (inviterEmail === inviteeEmail) return false; // self-attribution guard
-  localStorage.setItem(flag, "1");
-  const all = readShares(inviterEmail);
-  const k = shareKey(kind, resourceId);
-  const cur = all[k] ?? {
-    kind,
-    resourceId: resourceId.toUpperCase(),
-    clicks: 0,
-    joins: 0,
-    lastClickAt: 0,
-    lastJoinAt: 0,
-  };
-  cur.joins += 1;
-  cur.lastJoinAt = Date.now();
-  all[k] = cur;
-  writeShares(inviterEmail, all);
+  // Local mirror is best-effort: only updates if the inviter is also
+  // known to this device's refmap. Cloud mirror runs regardless so
+  // the inviter sees the join from any device.
+  if (inviterEmail && inviterEmail !== inviteeEmail) {
+    localStorage.setItem(flag, "1");
+    const all = readShares(inviterEmail);
+    const k = shareKey(kind, resourceId);
+    const cur = all[k] ?? {
+      kind,
+      resourceId: resourceId.toUpperCase(),
+      clicks: 0,
+      joins: 0,
+      lastClickAt: 0,
+      lastJoinAt: 0,
+    };
+    cur.joins += 1;
+    cur.lastJoinAt = Date.now();
+    all[k] = cur;
+    writeShares(inviterEmail, all);
+  } else {
+    // Even without a local refmap row, mark the flag so we don't
+    // double-count if the cloud resolution succeeds and a re-render
+    // re-triggers the call.
+    localStorage.setItem(flag, "1");
+  }
+
+  void (async () => {
+    try {
+      const { mirrorShareJoin } = await import("./supabase/share-sync");
+      await mirrorShareJoin(inviterCode, kind, resourceId);
+    } catch { /* best-effort */ }
+  })();
+
   return true;
 }
 

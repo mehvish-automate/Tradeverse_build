@@ -32,6 +32,7 @@ export interface Database {
           home_institute: string | null;
           onboarded: boolean;
           is_admin: boolean;
+          referral_code: string | null;
         };
         Insert: {
           id: string;
@@ -42,6 +43,7 @@ export interface Database {
           home_institute?: string | null;
           onboarded?: boolean;
           is_admin?: boolean;
+          referral_code?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
       };
@@ -501,6 +503,44 @@ export interface Database {
           read_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["notification_reads"]["Insert"]>;
+      };
+
+      share_clicks: {
+        Row: {
+          id: string;
+          inviter_id: string;
+          kind: "floor" | "fest" | "event";
+          resource_id: string;
+          clicker_id: string | null;
+          clicked_at: string;
+        };
+        Insert: {
+          id?: string;
+          inviter_id: string;
+          kind: "floor" | "fest" | "event";
+          resource_id: string;
+          clicker_id?: string | null;
+          clicked_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["share_clicks"]["Insert"]>;
+      };
+
+      share_joins: {
+        Row: {
+          inviter_id: string;
+          invitee_id: string;
+          kind: "floor" | "fest" | "event";
+          resource_id: string;
+          joined_at: string;
+        };
+        Insert: {
+          inviter_id: string;
+          invitee_id: string;
+          kind: "floor" | "fest" | "event";
+          resource_id: string;
+          joined_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["share_joins"]["Insert"]>;
       };
     };
     Views: { [_ in never]: never };

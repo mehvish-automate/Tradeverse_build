@@ -9,6 +9,7 @@ import { getBrowserSupabase } from "./client";
 import { getProgress } from "../progress";
 import { getCurrentUser } from "../session";
 import { getHomeInstitute, hasOnboarded } from "../onboarding";
+import { codeFor } from "../referral";
 
 const LAST_SYNC_KEY = (email: string) => `tv.sync.lastResult.${email}`;
 
@@ -35,6 +36,9 @@ export async function syncProfile(): Promise<boolean> {
     dob: local.dob,
     home_institute: getHomeInstitute(local.email),
     onboarded: hasOnboarded(local.email),
+    // Phase 48.5 — server-side resolvable referral code so the share
+    // landing can map a ?ref=<code> to a Supabase user_id.
+    referral_code: codeFor(local.email),
   };
   const { error: profErr } = await (supabase.from("profiles") as unknown as {
     upsert: (row: unknown) => Promise<{ error: { message: string } | null }>;
