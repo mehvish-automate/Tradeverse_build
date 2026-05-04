@@ -5,7 +5,14 @@ import { useEffect, useState } from "react";
 
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
-import { codeFor, myReferrals, registerOwnCode, shareLinks } from "@/lib/referral";
+import {
+  ShareStat,
+  codeFor,
+  getShareStats,
+  myReferrals,
+  registerOwnCode,
+  shareLinks,
+} from "@/lib/referral";
 import { useSession } from "@/lib/session";
 
 export default function ReferralsPage() {
@@ -24,12 +31,14 @@ export default function ReferralsPage() {
 function ReferralsInner() {
   const { user } = useSession();
   const [referrals, setReferrals] = useState<{ email: string; ts: number }[]>([]);
+  const [shareStats, setShareStats] = useState<ShareStat[]>([]);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     registerOwnCode(user.email, user.displayName);
     setReferrals(myReferrals(user.email));
+    setShareStats(getShareStats(user.email));
   }, [user]);
 
   if (!user) return null;
@@ -99,6 +108,78 @@ function ReferralsInner() {
             Share on X
           </a>
         </div>
+      </section>
+
+      <section className="mt-10">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-medium uppercase tracking-wider text-ink-400">
+              Per-event share stats
+            </h2>
+            <p className="mt-1 text-xs text-ink-500">
+              Clicks vs registrations on the tracked links you&apos;ve shared
+              for trade floors, fests and market events.
+            </p>
+          </div>
+        </div>
+        {shareStats.length === 0 ? (
+          <div className="rounded-xl border border-ink-700 bg-ink-900/40 p-6 text-sm text-ink-400">
+            No tracked links yet. Open any trade floor, fest or market event,
+            tap the share button, and the funnel will show up here.
+          </div>
+        ) : (
+          <ul className="divide-y divide-ink-900 rounded-xl border border-ink-700 bg-ink-900/40">
+            {shareStats.map((s) => {
+              const conv =
+                s.clicks > 0 ? Math.round((s.joins / s.clicks) * 100) : 0;
+              const href =
+                s.kind === "floor"
+                  ? `/trade-floors/${s.resourceId}`
+                  : s.kind === "fest"
+                    ? `/fests/${s.resourceId}`
+                    : `/events/${s.resourceId}`;
+              return (
+                <li
+                  key={`${s.kind}:${s.resourceId}`}
+                  className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm"
+                >
+                  <Link href={href} className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-md bg-ink-900 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-ink-400">
+                        {s.kind}
+                      </span>
+                      <span className="font-mono text-ink-100">
+                        {s.resourceId}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 text-xs text-ink-500">
+                      Last activity{" "}
+                      {new Date(
+                        Math.max(s.lastClickAt, s.lastJoinAt) || Date.now(),
+                      ).toLocaleString()}
+                    </div>
+                  </Link>
+                  <div className="flex items-center gap-5 text-xs">
+                    <span className="text-ink-400">{s.clicks} clicks</span>
+                    <span className="text-ink-400">{s.joins} joins</span>
+                    <span
+                      className={
+                        "font-mono " +
+                        (conv >= 30
+                          ? "text-brand-300"
+                          : conv >= 10
+                            ? "text-ink-100"
+                            : "text-ink-400")
+                      }
+                    >
+                      {conv}% conv
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       <section className="mt-10">

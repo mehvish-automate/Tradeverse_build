@@ -1,18 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
+import { attributeShareJoin, shareWhatsapp } from "@/lib/referral";
 import {
   TradeFloor,
   currentWeekStart,
   getTradeFloor,
   joinTradeFloor,
   weeklyLeaderboard,
-  whatsappInviteUrl,
 } from "@/lib/tradeFloors";
 import {
   competitionLeaderboard,
@@ -32,7 +32,9 @@ export default function TradeFloorPage() {
       <Nav />
       <main className="mx-auto max-w-3xl px-6 py-10">
         <RequireAuth>
-          <TradeFloorInner />
+          <Suspense fallback={null}>
+            <TradeFloorInner />
+          </Suspense>
         </RequireAuth>
       </main>
     </>
@@ -41,6 +43,8 @@ export default function TradeFloorPage() {
 
 function TradeFloorInner() {
   const params = useParams<{ id: string }>();
+  const search = useSearchParams();
+  const viaCode = search?.get("via")?.toUpperCase() ?? "";
   const router = useRouter();
   const { user } = useSession();
 
@@ -65,12 +69,19 @@ function TradeFloorInner() {
         code: l.id,
         user: { email: user.email, displayName: user.displayName },
       });
-      if (r.ok) setTradeFloor(r.tradeFloor);
-      else setTradeFloor(l);
+      if (r.ok) {
+        setTradeFloor(r.tradeFloor);
+        // Phase 48 — credit the inviter once per (invitee, floor).
+        if (viaCode) {
+          attributeShareJoin(user.email, viaCode, "floor", r.tradeFloor.id);
+        }
+      } else {
+        setTradeFloor(l);
+      }
     } else {
       setTradeFloor(l);
     }
-  }, [user, params?.id]);
+  }, [user, params?.id, viaCode]);
 
   // Pull real cross-user XP scores so the XP tab is real, not demo.
   useEffect(() => {
@@ -170,7 +181,12 @@ function TradeFloorInner() {
             Trade now →
           </Link>
           <a
-            href={whatsappInviteUrl(tradeFloor)}
+            href={shareWhatsapp(
+              "floor",
+              tradeFloor.id,
+              tradeFloor.name,
+              user.email,
+            )}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-lg border border-ink-700 px-4 py-2 text-sm text-ink-100 hover:bg-ink-900"

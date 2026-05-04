@@ -143,3 +143,144 @@ function getOrigin(): string {
   if (typeof window !== "undefined") return window.location.origin;
   return "https://tradeverse.app";
 }
+
+// --- Phase 48: per-resource share links + click/join tracking -----------
+
+export type ShareKind = "floor" | "fest" | "event";
+
+export type ShareStat = {
+  kind: ShareKind;
+  resourceId: string;
+  clicks: number;
+  joins: number;
+  lastClickAt: number;
+  lastJoinAt: number;
+};
+
+const SHARES_KEY = (email: string) => `tv.shares.${email}`;
+
+function readShares(email: string): Record<string, ShareStat> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem(SHARES_KEY(email)) || "{}") as Record<
+      string,
+      ShareStat
+    >;
+  } catch {
+    return {};
+  }
+}
+
+function writeShares(email: string, all: Record<string, ShareStat>) {
+  localStorage.setItem(SHARES_KEY(email), JSON.stringify(all));
+}
+
+const shareKey = (kind: ShareKind, resourceId: string) =>
+  `${kind}:${resourceId.toUpperCase()}`;
+
+/**
+ * Build a tracked share URL for a specific resource. The recipient
+ * lands on /s/<kind>/<id>?ref=<inviterCode> which:
+ *   - displays the resource preview
+ *   - increments the inviter's click count
+ *   - sends them onward to the resource page with ?via=<inviterCode>
+ *     so a successful join can attribute back to the inviter.
+ */
+export function shareUrl(
+  kind: ShareKind,
+  resourceId: string,
+  inviterEmail: string,
+): string {
+  const code = codeFor(inviterEmail);
+  return `${getOrigin()}/s/${kind}/${resourceId.toUpperCase()}?ref=${code}`;
+}
+
+/** WhatsApp share helper for a resource — wraps shareUrl with copy. */
+export function shareWhatsapp(
+  kind: ShareKind,
+  resourceId: string,
+  resourceName: string,
+  inviterEmail: string,
+): string {
+  const url = shareUrl(kind, resourceId, inviterEmail);
+  const verb =
+    kind === "floor"
+      ? "trading competition"
+      : kind === "fest"
+        ? "fest"
+        : "market event";
+  const text = `Join my TradeVerse ${verb} "${resourceName}" — ${url}`;
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
+
+/** Increment click count for a resource share. */
+export function trackShareClick(
+  inviterCode: string,
+  kind: ShareKind,
+  resourceId: string,
+): void {
+  const inviterEmail = lookupInviter(inviterCode);
+  if (!inviterEmail) return;
+  const all = readShares(inviterEmail);
+  const k = shareKey(kind, resourceId);
+  const cur = all[k] ?? {
+    kind,
+    resourceId: resourceId.toUpperCase(),
+    clicks: 0,
+    joins: 0,
+    lastClickAt: 0,
+    lastJoinAt: 0,
+  };
+  cur.clicks += 1;
+  cur.lastClickAt = Date.now();
+  all[k] = cur;
+  writeShares(inviterEmail, all);
+}
+
+/**
+ * Idempotent join attribution: flips a per-(invitee, resource) flag so
+ * re-visits don't re-count. The first successful join from a `via=`
+ * link increments the inviter's join count.
+ */
+const JOIN_ATTRIBUTED = (
+  inviteeEmail: string,
+  kind: ShareKind,
+  id: string,
+) => `tv.shareJoin.${inviteeEmail}.${kind}.${id.toUpperCase()}`;
+
+export function attributeShareJoin(
+  inviteeEmail: string,
+  inviterCode: string,
+  kind: ShareKind,
+  resourceId: string,
+): boolean {
+  if (typeof window === "undefined") return false;
+  if (!inviterCode) return false;
+  const flag = JOIN_ATTRIBUTED(inviteeEmail, kind, resourceId);
+  if (localStorage.getItem(flag)) return false;
+  const inviterEmail = lookupInviter(inviterCode);
+  if (!inviterEmail) return false;
+  if (inviterEmail === inviteeEmail) return false; // self-attribution guard
+  localStorage.setItem(flag, "1");
+  const all = readShares(inviterEmail);
+  const k = shareKey(kind, resourceId);
+  const cur = all[k] ?? {
+    kind,
+    resourceId: resourceId.toUpperCase(),
+    clicks: 0,
+    joins: 0,
+    lastClickAt: 0,
+    lastJoinAt: 0,
+  };
+  cur.joins += 1;
+  cur.lastJoinAt = Date.now();
+  all[k] = cur;
+  writeShares(inviterEmail, all);
+  return true;
+}
+
+export function getShareStats(inviterEmail: string): ShareStat[] {
+  return Object.values(readShares(inviterEmail)).sort(
+    (a, b) => Math.max(b.lastClickAt, b.lastJoinAt) - Math.max(a.lastClickAt, a.lastJoinAt),
+  );
+}

@@ -1,17 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import { getClub, getInstitute } from "@/lib/clubs";
+import { attributeShareJoin, shareWhatsapp } from "@/lib/referral";
 import {
   Fest,
   festLeaderboard,
   festStatus,
-  festWhatsappInvite,
   getFest,
   joinFest,
 } from "@/lib/fests";
@@ -30,7 +30,9 @@ export default function FestPage() {
       <Nav />
       <main className="mx-auto max-w-3xl px-6 py-10">
         <RequireAuth>
-          <FestInner />
+          <Suspense fallback={null}>
+            <FestInner />
+          </Suspense>
         </RequireAuth>
       </main>
     </>
@@ -40,6 +42,8 @@ export default function FestPage() {
 function FestInner() {
   const { user } = useSession();
   const params = useParams<{ code: string }>();
+  const search = useSearchParams();
+  const viaCode = search?.get("via")?.toUpperCase() ?? "";
   const code = params?.code ? String(params.code).toUpperCase() : "";
 
   const [fest, setFest] = useState<Fest | null | undefined>(undefined);
@@ -60,12 +64,18 @@ function FestInner() {
     }
     if (!f.participants.some((p) => p.email === user.email)) {
       const r = joinFest(f.id, { email: user.email, displayName: user.displayName });
-      if (r.ok) setFest(r.fest);
-      else setFest(f);
+      if (r.ok) {
+        setFest(r.fest);
+        if (viaCode) {
+          attributeShareJoin(user.email, viaCode, "fest", r.fest.id);
+        }
+      } else {
+        setFest(f);
+      }
     } else {
       setFest(f);
     }
-  }, [code, user]);
+  }, [code, user, viaCode]);
 
   // Pull real cross-user XP for the fest window. Re-pulls on live.tick.
   useEffect(() => {
@@ -196,7 +206,7 @@ function FestInner() {
           </div>
         </div>
         <a
-          href={festWhatsappInvite(fest)}
+          href={shareWhatsapp("fest", fest.id, fest.name, user.email)}
           target="_blank"
           rel="noopener noreferrer"
           className="shrink-0 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-brand-300"
