@@ -19,6 +19,8 @@ export type Sector =
 
 export type AssetClass = "stock" | "etf" | "index";
 
+export type StockMarketRegion = "IN" | "UAE" | "US";
+
 export type Stock = {
   symbol: string;
   name: string;
@@ -31,6 +33,10 @@ export type Stock = {
   assetClass?: AssetClass; // default "stock"
   /** Symbols inside our universe that live in the Nifty 50 proxy. */
   nifty50?: boolean;
+  /** Symbols inside our universe that live in the Nifty 100 proxy. */
+  nifty100?: boolean;
+  /** Market region; defaults to IN since the V1 catalog is Indian-only. */
+  marketRegion?: StockMarketRegion;
 };
 
 export const STOCKS: Stock[] = [
@@ -73,9 +79,16 @@ export const STOCKS: Stock[] = [
   { symbol: "NIFTYPHARMA",  name: "Nifty Pharma index",                sector: "Pharma",   basePrice:17800, drift:  8, vol: 1.3, assetClass: "index" },
 ];
 
-// Mark the first 25 stock-typed entries as Nifty 50 members (large caps).
+// Mark stock-typed entries as Nifty 50 + Nifty 100 members and stamp
+// the default market region. The V1 catalog is small enough that every
+// stock-typed row is treated as both Nifty 50 and Nifty 100 — refine
+// when the catalog grows beyond 50 names.
 for (const s of STOCKS) {
-  if ((s.assetClass ?? "stock") === "stock") s.nifty50 = true;
+  if ((s.assetClass ?? "stock") === "stock") {
+    s.nifty50 = true;
+    s.nifty100 = true;
+  }
+  s.marketRegion = s.marketRegion ?? "IN";
 }
 
 export const ASSET_CLASSES: AssetClass[] = ["stock", "etf", "index"];
@@ -90,6 +103,69 @@ export const SECTORS: Sector[] = Array.from(
 
 export function getStock(symbol: string): Stock | null {
   return STOCKS.find((s) => s.symbol === symbol) ?? null;
+}
+
+// Phase 49 — universe filtering for trade-floor scoped trading.
+//
+// Trade-floor launches capture three independent universe constraints:
+//   - stockUniverse.kind: "nifty50" | "nifty100" | "all"
+//   - assetClasses[]:     "stocks" | "etfs" | "indices"  (plural)
+//   - marketRegion:       "IN" | "UAE" | "US" | "GLOBAL"
+//
+// Until the catalog grows beyond Indian names, UAE/US/GLOBAL pickers
+// will be empty — the trade ticket should surface that explicitly.
+
+export type FloorUniverseConstraint = {
+  universeKind: "nifty50" | "nifty100" | "all" | "custom-sectors" | "handpicked";
+  customSectors?: string[];
+  handpickedSymbols?: string[];
+  assetClasses: ("stocks" | "etfs" | "indices")[];
+  marketRegion: "IN" | "UAE" | "US" | "GLOBAL";
+};
+
+const ASSET_CLASS_PLURAL_MAP: Record<
+  "stocks" | "etfs" | "indices",
+  AssetClass
+> = {
+  stocks: "stock",
+  etfs: "etf",
+  indices: "index",
+};
+
+export function filterStocksForFloor(c: FloorUniverseConstraint): Stock[] {
+  const allowedClasses = new Set<AssetClass>(
+    c.assetClasses.map((p) => ASSET_CLASS_PLURAL_MAP[p]),
+  );
+
+  // GLOBAL = no region filter; otherwise must match the floor's region.
+  const regionOk = (s: Stock): boolean => {
+    if (c.marketRegion === "GLOBAL") return true;
+    return (s.marketRegion ?? "IN") === c.marketRegion;
+  };
+
+  const universeOk = (s: Stock): boolean => {
+    switch (c.universeKind) {
+      case "nifty50":
+        // Index/ETF rows that track Nifty 50 are still useful here.
+        return Boolean(s.nifty50) || s.assetClass === "etf" || s.assetClass === "index";
+      case "nifty100":
+        return (
+          Boolean(s.nifty100) || s.assetClass === "etf" || s.assetClass === "index"
+        );
+      case "all":
+        return true;
+      case "custom-sectors":
+        return c.customSectors?.includes(s.sector) ?? false;
+      case "handpicked":
+        return c.handpickedSymbols?.includes(s.symbol) ?? false;
+      default:
+        return true;
+    }
+  };
+
+  return STOCKS.filter(
+    (s) => allowedClasses.has(s.assetClass ?? "stock") && regionOk(s) && universeOk(s),
+  );
 }
 
 function hash(s: string): number {

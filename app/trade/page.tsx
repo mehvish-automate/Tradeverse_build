@@ -26,7 +26,7 @@ import {
 import { useSession } from "@/lib/session";
 import { reconcilePaperFromCloud } from "@/lib/supabase/paper-sync";
 import { useRealtimePaper } from "@/lib/supabase/realtime";
-import { STOCKS, price } from "@/lib/stocks";
+import { STOCKS, Stock, filterStocksForFloor, price } from "@/lib/stocks";
 import { TradeFloor, getTradeFloor } from "@/lib/tradeFloors";
 
 export default function TradePage() {
@@ -62,7 +62,37 @@ function Inner() {
     ensureAccount(user.email, floor.id, floor.virtualCapital);
   }, [user, floor]);
 
+  // Phase 49 — universe filtering. When scoped to a floor, the symbol
+  // picker only shows stocks/etfs/indices that match the floor's
+  // marketRegion + assetClasses + stockUniverse. Empty result set is
+  // surfaced as a clear panel below.
+  const availableStocks: Stock[] = useMemo(() => {
+    if (!floor) return STOCKS;
+    return filterStocksForFloor({
+      universeKind: floor.stockUniverse.kind,
+      customSectors:
+        floor.stockUniverse.kind === "custom-sectors"
+          ? floor.stockUniverse.sectors
+          : undefined,
+      handpickedSymbols:
+        floor.stockUniverse.kind === "handpicked"
+          ? floor.stockUniverse.symbols
+          : undefined,
+      assetClasses: floor.assetClasses,
+      marketRegion: floor.marketRegion,
+    });
+  }, [floor]);
+
   const [symbol, setSymbol] = useState<string>(STOCKS[0].symbol);
+
+  // Whenever the universe changes (or page first mounts in a scoped
+  // run), snap the picker to a symbol that's actually allowed.
+  useEffect(() => {
+    if (availableStocks.length === 0) return;
+    if (!availableStocks.some((s) => s.symbol === symbol)) {
+      setSymbol(availableStocks[0].symbol);
+    }
+  }, [availableStocks, symbol]);
   const [book, setBook] = useState<L2Book | null>(null);
   const [tick, setTick] = useState(0);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -134,6 +164,34 @@ function Inner() {
   const acct = getAccount(user.email, scopeId);
   const holding = acct.holdings.find((h) => h.symbol === symbol);
 
+  // Universe is empty (e.g. floor.marketRegion = "UAE" but our V1
+  // catalog is Indian-only). Show a clear panel so the user knows
+  // why the trade ticket is blank.
+  if (availableStocks.length === 0) {
+    return (
+      <>
+        {floor && <CompetitionBanner floor={floor} />}
+        <div className="mt-4 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-6">
+          <h1 className="text-xl font-semibold">No instruments configured</h1>
+          <p className="mt-2 text-sm text-ink-300">
+            This competition is set to{" "}
+            <strong>{floor?.marketRegion}</strong> · {floor?.stockUniverse.kind}
+            {" "}with asset classes{" "}
+            <strong>{floor?.assetClasses.join(", ")}</strong>, but no
+            instruments matching that filter are loaded yet. Multi-region
+            catalogs land in a future phase.
+          </p>
+          <Link
+            href={`/trade-floors/${floor?.id ?? ""}`}
+            className="mt-4 inline-block rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-100 hover:bg-ink-900"
+          >
+            Back to leaderboard
+          </Link>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       {floor && <CompetitionBanner floor={floor} />}
@@ -177,7 +235,11 @@ function Inner() {
 
       <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[1.2fr_1fr]">
         <section className="rounded-2xl border border-ink-700 bg-ink-900/40 p-5">
-          <SymbolPicker symbol={symbol} setSymbol={setSymbol} />
+          <SymbolPicker
+            symbol={symbol}
+            setSymbol={setSymbol}
+            stocks={availableStocks}
+          />
           <Quote symbol={symbol} book={book} holding={holding} key={tick} />
           <OrderBook book={book} />
         </section>
@@ -344,19 +406,26 @@ function PortfolioRow({
 function SymbolPicker({
   symbol,
   setSymbol,
+  stocks,
 }: {
   symbol: string;
   setSymbol: (s: string) => void;
+  stocks: Stock[];
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-ink-300">Symbol</span>
+      <span className="mb-1 flex items-center justify-between text-xs font-medium text-ink-300">
+        <span>Symbol</span>
+        <span className="text-[10px] uppercase tracking-wider text-ink-500">
+          {stocks.length} instrument{stocks.length === 1 ? "" : "s"}
+        </span>
+      </span>
       <select
         value={symbol}
         onChange={(e) => setSymbol(e.target.value)}
         className="input max-w-md"
       >
-        {STOCKS.map((s) => (
+        {stocks.map((s) => (
           <option key={s.symbol} value={s.symbol}>
             {s.symbol} — {s.name} ({s.sector})
           </option>
