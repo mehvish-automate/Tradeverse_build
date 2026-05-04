@@ -11,7 +11,7 @@
 // portfolioValue(). Other members' P&L is deterministic demo data
 // seeded by (floor.id, email) until per-floor accounts land in 45.5.
 
-import { portfolioValue } from "./paper";
+import { ensureAccount, portfolioValue } from "./paper";
 import type { TradeFloor } from "./tradeFloors";
 
 export type CompetitionScheduleStatus = "upcoming" | "live" | "ended";
@@ -48,9 +48,11 @@ export type CompetitionRow = {
 };
 
 /**
- * Live P&L leaderboard. Viewer reads their actual paper account;
- * others get a deterministic demo P&L seeded by (floor.id, email)
- * so ranks are stable across reloads.
+ * Live P&L leaderboard. Viewer reads their floor-scoped paper account
+ * (seeded with floor.virtualCapital on first visit). Other members get
+ * a deterministic demo P&L seeded by (floor.id, email) so ranks are
+ * stable across reloads — until per-floor cloud sync lands and we can
+ * pull their real scoped account.
  */
 export function competitionLeaderboard(
   floor: TradeFloor,
@@ -60,9 +62,10 @@ export function competitionLeaderboard(
   return floor.members
     .map((m) => {
       if (m.email === viewerEmail) {
-        const pv = portfolioValue(m.email);
-        // V0.1: pv.total is the user's whole paper portfolio, not floor-
-        // scoped. Treat that as their "competition value" for now.
+        // Make sure the scoped account exists with the right starting
+        // capital. ensureAccount is a no-op when already present.
+        ensureAccount(m.email, floor.id, cap);
+        const pv = portfolioValue(m.email, new Date(), floor.id);
         return {
           email: m.email,
           displayName: m.displayName,
@@ -78,8 +81,7 @@ export function competitionLeaderboard(
       for (const c of floor.id + m.email) {
         seed = (seed * 31 + c.charCodeAt(0)) >>> 0;
       }
-      // ±20% range, biased lightly positive
-      const pct = (seed % 4001) / 100 - 18; // -18% to +22%
+      const pct = (seed % 4001) / 100 - 18;
       const pnl = Math.round((cap * pct) / 100);
       return {
         email: m.email,

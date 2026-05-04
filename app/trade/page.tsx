@@ -1,17 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
+import { formatRupees } from "@/lib/competitions";
 import { sessionAt, sessionLabel } from "@/lib/marketData";
 import { bookAtPrice, L2Book } from "@/lib/orderbook";
 import {
+  GLOBAL_SCOPE,
   Order,
   OrderKind,
   OrderSide,
   cancelOrder,
+  ensureAccount,
   getAccount,
   listOrders,
   openOrders,
@@ -23,6 +27,7 @@ import { useSession } from "@/lib/session";
 import { reconcilePaperFromCloud } from "@/lib/supabase/paper-sync";
 import { useRealtimePaper } from "@/lib/supabase/realtime";
 import { STOCKS, price } from "@/lib/stocks";
+import { TradeFloor, getTradeFloor } from "@/lib/tradeFloors";
 
 export default function TradePage() {
   return (
@@ -30,7 +35,9 @@ export default function TradePage() {
       <Nav />
       <main className="mx-auto max-w-6xl px-6 py-10">
         <RequireAuth>
-          <Inner />
+          <Suspense fallback={null}>
+            <Inner />
+          </Suspense>
         </RequireAuth>
       </main>
     </>
@@ -39,6 +46,22 @@ export default function TradePage() {
 
 function Inner() {
   const { user } = useSession();
+  const search = useSearchParams();
+  const floorParam = search?.get("floor")?.toUpperCase() ?? null;
+
+  // Lookup the floor (if scoped) so we know virtual capital + name.
+  const floor: TradeFloor | null = useMemo(
+    () => (floorParam ? getTradeFloor(floorParam) : null),
+    [floorParam],
+  );
+  const scopeId = floor ? floor.id : GLOBAL_SCOPE;
+
+  // First-visit seed: scoped account inherits the floor's virtual capital.
+  useEffect(() => {
+    if (!user || !floor) return;
+    ensureAccount(user.email, floor.id, floor.virtualCapital);
+  }, [user, floor]);
+
   const [symbol, setSymbol] = useState<string>(STOCKS[0].symbol);
   const [book, setBook] = useState<L2Book | null>(null);
   const [tick, setTick] = useState(0);
@@ -51,10 +74,10 @@ function Inner() {
     if (!user) return;
     const mid = price(symbol, new Date());
     setBook(bookAtPrice(symbol, mid));
-    setOrders(listOrders(user.email));
-    setOpens(openOrders(user.email));
+    setOrders(listOrders(user.email, scopeId));
+    setOpens(openOrders(user.email, scopeId));
     setTick((t) => t + 1);
-  }, [user, symbol]);
+  }, [user, symbol, scopeId]);
 
   useEffect(() => {
     refresh();
@@ -63,18 +86,18 @@ function Inner() {
   useEffect(() => {
     if (!user) return;
     const iv = setInterval(() => {
-      tickOpenOrders(user.email);
+      tickOpenOrders(user.email, scopeId);
       refresh();
     }, 3000);
     return () => clearInterval(iv);
-  }, [user, refresh]);
+  }, [user, refresh, scopeId]);
 
-  // Cross-device realtime — when an order or holding changes anywhere
-  // in cloud, reconcile down and re-render so a fill on the phone
-  // appears here within a second.
+  // Cross-device realtime is global-only: floor-scoped accounts live
+  // entirely in localStorage for V0.5, so reconciling from cloud would
+  // clobber them. Only subscribe + reconcile when scope is global.
   const live = useRealtimePaper();
   useEffect(() => {
-    if (!user) return;
+    if (!user || scopeId !== GLOBAL_SCOPE) return;
     let cancelled = false;
     void (async () => {
       await reconcilePaperFromCloud();
@@ -83,22 +106,46 @@ function Inner() {
     return () => {
       cancelled = true;
     };
-  }, [user, live.tick, refresh]);
+  }, [user, live.tick, refresh, scopeId]);
 
   if (!user || !book) return null;
 
-  const pv = portfolioValue(user.email);
-  const acct = getAccount(user.email);
+  // floorParam was set but the floor isn't on this device yet —
+  // surface a clear hint instead of silently falling back to global.
+  if (floorParam && !floor) {
+    return (
+      <div className="rounded-xl border border-ink-700 bg-ink-900/40 p-6">
+        <h1 className="text-xl font-semibold">Competition not found</h1>
+        <p className="mt-2 text-sm text-ink-400">
+          Couldn&apos;t find a trade floor with code {floorParam} on this
+          device. Open it from the Floors list to load it first.
+        </p>
+        <Link
+          href="/trade-floors"
+          className="mt-4 inline-block rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-100 hover:bg-ink-900"
+        >
+          Open trade floors
+        </Link>
+      </div>
+    );
+  }
+
+  const pv = portfolioValue(user.email, new Date(), scopeId);
+  const acct = getAccount(user.email, scopeId);
   const holding = acct.holdings.find((h) => h.symbol === symbol);
 
   return (
     <>
+      {floor && <CompetitionBanner floor={floor} />}
+
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="text-xs font-medium uppercase tracking-[0.18em] text-brand-300">
-            Paper trading
+            {floor ? "Competition trading" : "Paper trading"}
           </div>
-          <h1 className="mt-1 text-3xl font-semibold">Trade ticket</h1>
+          <h1 className="mt-1 text-3xl font-semibold">
+            {floor ? floor.name : "Trade ticket"}
+          </h1>
           <p className="mt-1 max-w-xl text-sm text-ink-400">
             Simulated order engine: Market / Limit / Stop / Stop-Limit, book
             walked for slippage, 250–500ms latency, partial fills. Every ₹
@@ -114,10 +161,14 @@ function Inner() {
             Open chart →
           </Link>
           <Link
-            href="/trade/history"
+            href={
+              floor
+                ? `/trade-floors/${floor.id}`
+                : "/trade/history"
+            }
             className="rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-100 hover:bg-ink-900"
           >
-            Order history →
+            {floor ? "Leaderboard →" : "Order history →"}
           </Link>
         </div>
       </div>
@@ -135,6 +186,7 @@ function Inner() {
           <OrderTicket
             symbol={symbol}
             book={book}
+            scopeId={scopeId}
             onAck={(m) => {
               setAck(m);
               setErr(null);
@@ -158,11 +210,11 @@ function Inner() {
             </p>
           )}
 
-          <OpenOrders opens={opens} refresh={refresh} />
+          <OpenOrders opens={opens} refresh={refresh} scopeId={scopeId} />
         </section>
       </div>
 
-      <Holdings orders={orders} />
+      <Holdings orders={orders} scopeId={scopeId} />
 
       <div className="mt-10">
         <Link
@@ -173,6 +225,61 @@ function Inner() {
         </Link>
       </div>
     </>
+  );
+}
+
+function CompetitionBanner({ floor }: { floor: TradeFloor }) {
+  const now = Date.now();
+  const status =
+    now < floor.startAt
+      ? "upcoming"
+      : now > floor.endAt
+        ? "ended"
+        : "live";
+  const statusCls =
+    status === "live"
+      ? "border-brand-500/40 bg-brand-500/5 text-brand-200"
+      : status === "upcoming"
+        ? "border-amber-500/40 bg-amber-500/5 text-amber-200"
+        : "border-ink-700 bg-ink-900/40 text-ink-300";
+  return (
+    <div
+      className={
+        "mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm " +
+        statusCls
+      }
+    >
+      <div>
+        <span className="font-medium">Trading in {floor.name}</span>
+        <span className="mx-2 text-ink-500">·</span>
+        <span className="text-xs uppercase tracking-wider">
+          {status === "live"
+            ? "Window live"
+            : status === "upcoming"
+              ? "Window opens "
+              : "Window closed"}
+          {status !== "live" && new Date(floor.startAt).toLocaleString()}
+        </span>
+        <span className="mx-2 text-ink-500">·</span>
+        <span className="text-xs">
+          {formatRupees(floor.virtualCapital)} starting · {floor.marketRegion}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <Link
+          href={`/trade-floors/${floor.id}`}
+          className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-100 hover:bg-ink-900"
+        >
+          Leaderboard →
+        </Link>
+        <Link
+          href="/trade"
+          className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-100 hover:bg-ink-900"
+        >
+          Exit competition
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -366,11 +473,13 @@ function OrderBook({ book }: { book: L2Book }) {
 function OrderTicket({
   symbol,
   book,
+  scopeId,
   onAck,
   onErr,
 }: {
   symbol: string;
   book: L2Book;
+  scopeId: string;
   onAck: (msg: string) => void;
   onErr: (msg: string) => void;
 }) {
@@ -398,14 +507,19 @@ function OrderTicket({
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const r = placeOrder(user!.email, {
-      symbol,
-      side,
-      kind,
-      qty,
-      limitPrice: kind === "limit" || kind === "stop-limit" ? limitPrice : undefined,
-      stopPrice: kind === "stop" || kind === "stop-limit" ? stopPrice : undefined,
-    });
+    const r = placeOrder(
+      user!.email,
+      {
+        symbol,
+        side,
+        kind,
+        qty,
+        limitPrice: kind === "limit" || kind === "stop-limit" ? limitPrice : undefined,
+        stopPrice: kind === "stop" || kind === "stop-limit" ? stopPrice : undefined,
+      },
+      undefined,
+      scopeId,
+    );
     if (!r.ok) {
       onErr(r.error);
       return;
@@ -527,9 +641,11 @@ function OrderTicket({
 function OpenOrders({
   opens,
   refresh,
+  scopeId,
 }: {
   opens: Order[];
   refresh: () => void;
+  scopeId: string;
 }) {
   const { user } = useSession();
   if (!user) return null;
@@ -565,7 +681,7 @@ function OpenOrders({
             </div>
             <button
               onClick={() => {
-                cancelOrder(user.email, o.id);
+                cancelOrder(user.email, o.id, scopeId);
                 refresh();
               }}
               className="shrink-0 rounded-md border border-ink-700 px-2.5 py-1 text-xs text-ink-300 hover:bg-ink-900"
@@ -579,10 +695,10 @@ function OpenOrders({
   );
 }
 
-function Holdings({ orders }: { orders: Order[] }) {
+function Holdings({ orders, scopeId }: { orders: Order[]; scopeId: string }) {
   const { user } = useSession();
   if (!user) return null;
-  const acct = getAccount(user.email);
+  const acct = getAccount(user.email, scopeId);
   if (acct.holdings.length === 0) return null;
   return (
     <section className="mt-8 overflow-hidden rounded-2xl border border-ink-700">

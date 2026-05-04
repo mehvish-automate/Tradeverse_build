@@ -164,7 +164,7 @@ function TradeFloorInner() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
-            href="/trade"
+            href={`/trade?floor=${tradeFloor.id}`}
             className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-brand-300"
           >
             Trade now →
@@ -261,7 +261,7 @@ function TradeFloorInner() {
 
       <div className="mt-6 flex flex-wrap gap-3">
         <Link
-          href="/trade"
+          href={`/trade?floor=${tradeFloor.id}`}
           className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-ink-950 hover:bg-brand-300"
         >
           Place a trade →
@@ -275,10 +275,9 @@ function TradeFloorInner() {
       </div>
 
       <p className="mt-4 text-xs text-ink-500">
-        V0.1 note: your P&amp;L reads your global paper account during the
-        competition window. Per-floor scoped accounts (so multiple competitions
-        don&apos;t share the same capital) land in 45.5. Other members&apos;
-        P&amp;L shown here is demo data until that lands.
+        Your P&amp;L is computed against this competition&apos;s scoped paper
+        account — fresh capital per floor. Other members&apos; P&amp;L shown
+        here is demo data until per-floor cloud sync lands.
       </p>
     </>
   );

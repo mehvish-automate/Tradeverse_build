@@ -38,12 +38,25 @@ async function cloudMirrorAccount() {
 
 const STARTING_CASH = 1_000_000;
 
+/**
+ * Phase 45.5 — paper accounts can be scoped to a virtual trading
+ * competition (a trade-floor id). When `scopeId` is the sentinel
+ * GLOBAL_SCOPE, behaviour matches the pre-Phase-45.5 single-account
+ * model and continues to mirror to Supabase. Floor-scoped accounts
+ * (any other scopeId) live in localStorage only for V0.5 — cloud
+ * sync of scoped writes lands once the orders/paper_holdings tables
+ * pick up a scope_id column.
+ */
+export const GLOBAL_SCOPE = "global";
+
 export type Holding = { symbol: string; shares: number; avgPrice: number };
 
 export type PaperAccount = {
   cash: number;
   holdings: Holding[];
   createdAt: number;
+  /** Optional capital baseline for P&L calc. Defaults to STARTING_CASH. */
+  startingCash?: number;
 };
 
 export type OrderKind = "market" | "limit" | "stop" | "stop-limit";
@@ -74,22 +87,31 @@ export type Order = {
   note?: string;
 };
 
-const ACCT_KEY = (email: string) => `tv.paper.account.${email}`;
-const ORDERS_KEY = (email: string) => `tv.paper.orders.${email}`;
+const ACCT_KEY = (email: string, scope: string) =>
+  scope === GLOBAL_SCOPE
+    ? `tv.paper.account.${email}`
+    : `tv.paper.account.${email}.${scope}`;
+const ORDERS_KEY = (email: string, scope: string) =>
+  scope === GLOBAL_SCOPE
+    ? `tv.paper.orders.${email}`
+    : `tv.paper.orders.${email}.${scope}`;
 
 // --- Account ---
 
-function emptyAccount(): PaperAccount {
-  return { cash: STARTING_CASH, holdings: [], createdAt: Date.now() };
+function emptyAccount(startingCash = STARTING_CASH): PaperAccount {
+  return { cash: startingCash, holdings: [], createdAt: Date.now(), startingCash };
 }
 
-export function getAccount(email: string): PaperAccount {
+export function getAccount(
+  email: string,
+  scopeId: string = GLOBAL_SCOPE,
+): PaperAccount {
   if (typeof window === "undefined") return emptyAccount();
   try {
-    const raw = localStorage.getItem(ACCT_KEY(email));
+    const raw = localStorage.getItem(ACCT_KEY(email, scopeId));
     if (!raw) {
       const acct = emptyAccount();
-      localStorage.setItem(ACCT_KEY(email), JSON.stringify(acct));
+      localStorage.setItem(ACCT_KEY(email, scopeId), JSON.stringify(acct));
       return acct;
     }
     return JSON.parse(raw) as PaperAccount;
@@ -98,37 +120,93 @@ export function getAccount(email: string): PaperAccount {
   }
 }
 
-function saveAccount(email: string, acct: PaperAccount) {
-  localStorage.setItem(ACCT_KEY(email), JSON.stringify(acct));
+function saveAccount(
+  email: string,
+  acct: PaperAccount,
+  scopeId: string = GLOBAL_SCOPE,
+) {
+  localStorage.setItem(ACCT_KEY(email, scopeId), JSON.stringify(acct));
 }
 
-export function resetAccount(email: string) {
-  saveAccount(email, emptyAccount());
-  localStorage.setItem(ORDERS_KEY(email), "[]");
-  void cloudMirrorAccount();
+/**
+ * Initialize a scoped account with a specific starting cash if it
+ * doesn't already exist. No-op if the account is already in storage.
+ * Used by the floor-scoped trade page to seed the competition's
+ * virtual capital on first visit.
+ */
+export function ensureAccount(
+  email: string,
+  scopeId: string,
+  startingCash: number,
+): PaperAccount {
+  if (typeof window === "undefined") return emptyAccount(startingCash);
+  const raw = localStorage.getItem(ACCT_KEY(email, scopeId));
+  if (raw) {
+    try {
+      return JSON.parse(raw) as PaperAccount;
+    } catch {
+      // fall through to re-init
+    }
+  }
+  const acct = emptyAccount(startingCash);
+  localStorage.setItem(ACCT_KEY(email, scopeId), JSON.stringify(acct));
+  return acct;
+}
+
+export function resetAccount(email: string, scopeId: string = GLOBAL_SCOPE) {
+  // Preserve the original starting cash for scoped accounts.
+  const existing = (() => {
+    if (typeof window === "undefined") return null;
+    const raw = localStorage.getItem(ACCT_KEY(email, scopeId));
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as PaperAccount;
+    } catch {
+      return null;
+    }
+  })();
+  const startingCash = existing?.startingCash ?? STARTING_CASH;
+  saveAccount(email, emptyAccount(startingCash), scopeId);
+  localStorage.setItem(ORDERS_KEY(email, scopeId), "[]");
+  if (scopeId === GLOBAL_SCOPE) void cloudMirrorAccount();
 }
 
 // --- Orders ---
 
-function readOrders(email: string): Order[] {
+function readOrders(
+  email: string,
+  scopeId: string = GLOBAL_SCOPE,
+): Order[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(ORDERS_KEY(email)) || "[]") as Order[];
+    return JSON.parse(
+      localStorage.getItem(ORDERS_KEY(email, scopeId)) || "[]",
+    ) as Order[];
   } catch {
     return [];
   }
 }
 
-function writeOrders(email: string, orders: Order[]) {
-  localStorage.setItem(ORDERS_KEY(email), JSON.stringify(orders));
+function writeOrders(
+  email: string,
+  orders: Order[],
+  scopeId: string = GLOBAL_SCOPE,
+) {
+  localStorage.setItem(ORDERS_KEY(email, scopeId), JSON.stringify(orders));
 }
 
-export function listOrders(email: string): Order[] {
-  return readOrders(email).sort((a, b) => b.placedAt - a.placedAt);
+export function listOrders(
+  email: string,
+  scopeId: string = GLOBAL_SCOPE,
+): Order[] {
+  return readOrders(email, scopeId).sort((a, b) => b.placedAt - a.placedAt);
 }
 
-export function openOrders(email: string): Order[] {
-  return readOrders(email).filter(
+export function openOrders(
+  email: string,
+  scopeId: string = GLOBAL_SCOPE,
+): Order[] {
+  return readOrders(email, scopeId).filter(
     (o) => o.status === "pending" || o.status === "partial",
   );
 }
@@ -162,6 +240,7 @@ export type PlaceInput = {
 export function validate(
   email: string,
   input: PlaceInput,
+  scopeId: string = GLOBAL_SCOPE,
 ): { ok: true } | { ok: false; error: string } {
   if (!input.symbol) return { ok: false, error: "Pick a symbol." };
   const qty = clampQty(input.qty);
@@ -177,7 +256,7 @@ export function validate(
   }
 
   // Buy power check against a conservative estimate.
-  const acct = getAccount(email);
+  const acct = getAccount(email, scopeId);
   if (input.side === "buy") {
     const estPrice = input.limitPrice ?? price(input.symbol, new Date());
     const est = estPrice * qty * 1.002; // small buffer for slippage
@@ -198,8 +277,9 @@ export function placeOrder(
   email: string,
   input: PlaceInput,
   onUpdate?: (order: Order) => void,
+  scopeId: string = GLOBAL_SCOPE,
 ): { ok: true; order: Order } | { ok: false; error: string } {
-  const v = validate(email, input);
+  const v = validate(email, input, scopeId);
   if (!v.ok) return v;
 
   const now = Date.now();
@@ -218,30 +298,34 @@ export function placeOrder(
     lastUpdated: now,
     fills: [],
   };
-  const all = readOrders(email);
+  const all = readOrders(email, scopeId);
   all.push(order);
-  writeOrders(email, all);
-  void cloudMirrorOrder(order);
+  writeOrders(email, all, scopeId);
+  if (scopeId === GLOBAL_SCOPE) void cloudMirrorOrder(order);
 
   // Deterministic-but-feels-real latency.
   const latency = 250 + Math.floor(Math.random() * 250);
   setTimeout(() => {
-    processOrder(email, order.id, onUpdate);
+    processOrder(email, order.id, onUpdate, scopeId);
   }, latency);
 
   return { ok: true, order };
 }
 
-export function cancelOrder(email: string, orderId: string): boolean {
-  const all = readOrders(email);
+export function cancelOrder(
+  email: string,
+  orderId: string,
+  scopeId: string = GLOBAL_SCOPE,
+): boolean {
+  const all = readOrders(email, scopeId);
   const idx = all.findIndex((o) => o.id === orderId);
   if (idx < 0) return false;
   const o = all[idx];
   if (o.status !== "pending" && o.status !== "partial") return false;
   o.status = "cancelled";
   o.lastUpdated = Date.now();
-  writeOrders(email, all);
-  void cloudMirrorOrder(o);
+  writeOrders(email, all, scopeId);
+  if (scopeId === GLOBAL_SCOPE) void cloudMirrorOrder(o);
   return true;
 }
 
@@ -304,21 +388,22 @@ function finalizeOrder(
   email: string,
   orderId: string,
   fills: Fill[],
+  scopeId: string = GLOBAL_SCOPE,
 ): Order | null {
-  const all = readOrders(email);
+  const all = readOrders(email, scopeId);
   const order = all.find((o) => o.id === orderId);
   if (!order) return null;
-  const acct = getAccount(email);
+  const acct = getAccount(email, scopeId);
 
   if (fills.length === 0) {
     // Limit or stop didn't execute — leave pending.
     order.lastUpdated = Date.now();
-    writeOrders(email, all);
+    writeOrders(email, all, scopeId);
     return order;
   }
 
   applyFills(acct, order.symbol, order.side, fills);
-  saveAccount(email, acct);
+  saveAccount(email, acct, scopeId);
 
   order.fills.push(...fills);
   const totalFilled = order.fills.reduce((s, f) => s + f.qty, 0);
@@ -327,9 +412,11 @@ function finalizeOrder(
   order.avgFillPrice = totalValue / Math.max(1, totalFilled);
   order.status = totalFilled >= order.qty ? "filled" : "partial";
   order.lastUpdated = Date.now();
-  writeOrders(email, all);
-  void cloudMirrorOrder(order);
-  void cloudMirrorAccount();
+  writeOrders(email, all, scopeId);
+  if (scopeId === GLOBAL_SCOPE) {
+    void cloudMirrorOrder(order);
+    void cloudMirrorAccount();
+  }
   return order;
 }
 
@@ -337,8 +424,9 @@ function processOrder(
   email: string,
   orderId: string,
   onUpdate?: (order: Order) => void,
+  scopeId: string = GLOBAL_SCOPE,
 ) {
-  const all = readOrders(email);
+  const all = readOrders(email, scopeId);
   const order = all.find((o) => o.id === orderId);
   if (!order) return;
   if (order.status === "cancelled" || order.status === "filled") return;
@@ -351,7 +439,7 @@ function processOrder(
     const levels = order.side === "buy" ? book.asks : book.bids;
     const remaining = order.qty - order.filledQty;
     const { fills } = takeLiquidity(levels, remaining);
-    finalizeOrder(email, orderId, fills);
+    finalizeOrder(email, orderId, fills, scopeId);
   } else if (order.kind === "limit") {
     // Fill if price crosses the limit.
     const crosses =
@@ -359,7 +447,7 @@ function processOrder(
         ? mid <= (order.limitPrice ?? 0)
         : mid >= (order.limitPrice ?? 0);
     if (!crosses) {
-      finalizeOrder(email, orderId, []);
+      finalizeOrder(email, orderId, [], scopeId);
     } else {
       const book = bookAtPrice(order.symbol, mid);
       const allLevels = order.side === "buy" ? book.asks : book.bids;
@@ -370,22 +458,21 @@ function processOrder(
       );
       const remaining = order.qty - order.filledQty;
       const { fills } = takeLiquidity(levels, remaining);
-      finalizeOrder(email, orderId, fills);
+      finalizeOrder(email, orderId, fills, scopeId);
     }
   } else if (order.kind === "stop") {
-    // Stop becomes a market order once triggered.
     const triggered =
       order.side === "buy"
         ? mid >= (order.stopPrice ?? Infinity)
         : mid <= (order.stopPrice ?? 0);
     if (!triggered) {
-      finalizeOrder(email, orderId, []);
+      finalizeOrder(email, orderId, [], scopeId);
     } else {
       const book = bookAtPrice(order.symbol, mid);
       const levels = order.side === "buy" ? book.asks : book.bids;
       const remaining = order.qty - order.filledQty;
       const { fills } = takeLiquidity(levels, remaining);
-      finalizeOrder(email, orderId, fills);
+      finalizeOrder(email, orderId, fills, scopeId);
     }
   } else if (order.kind === "stop-limit") {
     const triggered =
@@ -393,7 +480,7 @@ function processOrder(
         ? mid >= (order.stopPrice ?? Infinity)
         : mid <= (order.stopPrice ?? 0);
     if (!triggered) {
-      finalizeOrder(email, orderId, []);
+      finalizeOrder(email, orderId, [], scopeId);
     } else {
       const book = bookAtPrice(order.symbol, mid);
       const allLevels = order.side === "buy" ? book.asks : book.bids;
@@ -404,11 +491,11 @@ function processOrder(
       );
       const remaining = order.qty - order.filledQty;
       const { fills } = takeLiquidity(levels, remaining);
-      finalizeOrder(email, orderId, fills);
+      finalizeOrder(email, orderId, fills, scopeId);
     }
   }
 
-  const updated = readOrders(email).find((o) => o.id === orderId);
+  const updated = readOrders(email, scopeId).find((o) => o.id === orderId);
   if (updated && onUpdate) onUpdate(updated);
 }
 
@@ -417,9 +504,9 @@ function processOrder(
  * orders against the current price. Safe to call frequently — idempotent
  * per fill because completed orders short-circuit in processOrder.
  */
-export function tickOpenOrders(email: string) {
-  for (const o of openOrders(email)) {
-    processOrder(email, o.id);
+export function tickOpenOrders(email: string, scopeId: string = GLOBAL_SCOPE) {
+  for (const o of openOrders(email, scopeId)) {
+    processOrder(email, o.id, undefined, scopeId);
   }
 }
 
@@ -433,8 +520,13 @@ export type PortfolioValue = {
   pnlPct: number;
 };
 
-export function portfolioValue(email: string, now = new Date()): PortfolioValue {
-  const acct = getAccount(email);
+export function portfolioValue(
+  email: string,
+  now: Date = new Date(),
+  scopeId: string = GLOBAL_SCOPE,
+): PortfolioValue {
+  const acct = getAccount(email, scopeId);
+  const baseline = acct.startingCash ?? STARTING_CASH;
   let mv = 0;
   let cost = 0;
   for (const h of acct.holdings) {
@@ -443,8 +535,8 @@ export function portfolioValue(email: string, now = new Date()): PortfolioValue 
   }
   const total = acct.cash + mv;
   const pnl = mv - cost;
-  const invested = STARTING_CASH - acct.cash + cost;
-  const pnlPct = invested > 0 ? (total - STARTING_CASH) / STARTING_CASH : 0;
+  const invested = baseline - acct.cash + cost;
+  const pnlPct = invested > 0 ? (total - baseline) / baseline : 0;
   return {
     cash: acct.cash,
     marketValue: mv,
