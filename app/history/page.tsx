@@ -5,6 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
+import { tradeFloorsWonCount } from "@/lib/competitions";
+import { beatNiftyCount } from "@/lib/eventPortfolios";
+import { festsWonCount } from "@/lib/fests";
 import { DailyResult, getProgress } from "@/lib/progress";
 import { useSession } from "@/lib/session";
 
@@ -31,17 +34,41 @@ export default function HistoryPage() {
   );
 }
 
+type WinsBreakdown = {
+  perfectRunsLifetime: number;
+  festsWon: number;
+  beatNifty: number;
+  floorsWon: number;
+};
+
 function HistoryInner() {
   const { user } = useSession();
   const [all, setAll] = useState<DailyResult[]>([]);
   const [streak, setStreak] = useState(0);
+  const [totalXpLifetime, setTotalXpLifetime] = useState(0);
+  const [wins, setWins] = useState<WinsBreakdown>({
+    perfectRunsLifetime: 0,
+    festsWon: 0,
+    beatNifty: 0,
+    floorsWon: 0,
+  });
   const [window, setWindow] = useState<Window>("1M");
 
   useEffect(() => {
     if (!user) return;
     const p = getProgress(user.email);
     setStreak(p.streak);
-    setAll([...p.history].sort((a, b) => (a.dateKey < b.dateKey ? 1 : -1)));
+    setTotalXpLifetime(p.totalXp);
+    const sorted = [...p.history].sort((a, b) =>
+      a.dateKey < b.dateKey ? 1 : -1,
+    );
+    setAll(sorted);
+    setWins({
+      perfectRunsLifetime: sorted.filter((r) => r.correct === r.total).length,
+      festsWon: festsWonCount(user.email),
+      beatNifty: beatNiftyCount(user.email),
+      floorsWon: tradeFloorsWonCount(user.email),
+    });
   }, [user]);
 
   const windowDays =
@@ -55,6 +82,16 @@ function HistoryInner() {
 
   if (!user) return null;
 
+  // Lifetime metrics (independent of window selector — these are the
+  // "profile / personal growth" numbers from the spec matrix).
+  const lifetimeQs = all.reduce((s, r) => s + r.total, 0);
+  const lifetimeCorrect = all.reduce((s, r) => s + r.correct, 0);
+  const lifetimeAccuracy =
+    lifetimeQs === 0 ? 0 : Math.round((lifetimeCorrect / lifetimeQs) * 100);
+  const totalWins =
+    wins.perfectRunsLifetime + wins.festsWon + wins.beatNifty + wins.floorsWon;
+
+  // Windowed (existing).
   const totalQs = filtered.reduce((s, r) => s + r.total, 0);
   const totalCorrect = filtered.reduce((s, r) => s + r.correct, 0);
   const totalXp = filtered.reduce((s, r) => s + r.xp, 0);
@@ -71,10 +108,70 @@ function HistoryInner() {
       <div className="mb-6">
         <h1 className="text-3xl font-semibold">History</h1>
         <p className="mt-1 text-sm text-ink-400">
-          Your daily challenge runs. Accuracy drifts up once you start
-          recognising the same patterns in new places.
+          Your personal growth across every surface — daily challenge runs,
+          fests, market events and trade floors. Lifetime numbers up top,
+          windowed view below.
         </p>
       </div>
+
+      {/* --- Lifetime --- */}
+      <section className="mb-8">
+        <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-brand-300">
+          Lifetime
+        </h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          <Stat label="Questions" value={lifetimeQs.toLocaleString()} />
+          <Stat
+            label="Accuracy"
+            value={`${lifetimeAccuracy}%`}
+            sub={
+              lifetimeQs === 0
+                ? "—"
+                : `${lifetimeCorrect}/${lifetimeQs} correct`
+            }
+          />
+          <Stat label="Plays" value={`${all.length}`} />
+          <Stat
+            label="Wins"
+            value={`${totalWins}`}
+            sub={`across ${["daily", "fests", "events", "floors"].length} surfaces`}
+          />
+          <Stat label="Total XP" value={totalXpLifetime.toLocaleString()} />
+        </div>
+      </section>
+
+      {/* --- Wins breakdown --- */}
+      <section className="mb-10">
+        <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-ink-400">
+          Wins · breakdown
+        </h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <WinTile
+            emoji="🎯"
+            label="Perfect daily runs"
+            value={wins.perfectRunsLifetime}
+            sub="5/5 on the daily challenge"
+          />
+          <WinTile
+            emoji="🏆"
+            label="Fests won"
+            value={wins.festsWon}
+            sub="Rank #1 on a resolved fest"
+          />
+          <WinTile
+            emoji="📈"
+            label="Beat NIFTY events"
+            value={wins.beatNifty}
+            sub="Positive alpha on resolution"
+          />
+          <WinTile
+            emoji="🥇"
+            label="Trade floors won"
+            value={wins.floorsWon}
+            sub="Top P&L on an ended floor"
+          />
+        </div>
+      </section>
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
         <span className="text-xs text-ink-500">Window:</span>
@@ -227,6 +324,44 @@ function Stat({
       <div className="text-xs text-ink-500">{label}</div>
       <div className="mt-1 text-2xl font-semibold">{value}</div>
       {sub && <div className="mt-0.5 text-[11px] text-ink-500">{sub}</div>}
+    </div>
+  );
+}
+
+function WinTile({
+  emoji,
+  label,
+  value,
+  sub,
+}: {
+  emoji: string;
+  label: string;
+  value: number;
+  sub: string;
+}) {
+  const lit = value > 0;
+  return (
+    <div
+      className={
+        "rounded-xl border p-4 transition " +
+        (lit
+          ? "border-brand-500/40 bg-brand-500/5"
+          : "border-ink-700 bg-ink-900/40")
+      }
+    >
+      <div className="flex items-center gap-2 text-xs text-ink-400">
+        <span aria-hidden>{emoji}</span>
+        <span>{label}</span>
+      </div>
+      <div
+        className={
+          "mt-1 text-2xl font-semibold " +
+          (lit ? "text-brand-300" : "text-ink-200")
+        }
+      >
+        {value}
+      </div>
+      <div className="mt-0.5 text-[11px] text-ink-500">{sub}</div>
     </div>
   );
 }

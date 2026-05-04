@@ -1,18 +1,14 @@
 "use client";
 
-// Phase 45 — virtual trading competition mechanics layered on top of
+// Phase 45 / 45.5 — virtual trading competition mechanics layered on
 // the trade-floor model from Phase 42. Each floor IS a competition:
 // it has a window (startAt/endAt), a virtual capital allocation per
-// player, a stock universe, and asset classes. This module computes
-// the live P&L leaderboard during the window.
-//
-// V0.1 caveat: per-floor scoped paper accounts aren't built yet. The
-// viewer's P&L is read from their global tv.paper.account.<email> via
-// portfolioValue(). Other members' P&L is deterministic demo data
-// seeded by (floor.id, email) until per-floor accounts land in 45.5.
+// player, a stock universe, and asset classes. The viewer's P&L
+// reads their floor-scoped paper account; other members are still
+// demo-seeded until per-floor cloud sync lands.
 
 import { ensureAccount, portfolioValue } from "./paper";
-import type { TradeFloor } from "./tradeFloors";
+import { TradeFloor, getMyTradeFloors } from "./tradeFloors";
 
 export type CompetitionScheduleStatus = "upcoming" | "live" | "ended";
 
@@ -94,6 +90,21 @@ export function competitionLeaderboard(
       };
     })
     .sort((a, b) => b.pnl - a.pnl);
+}
+
+/**
+ * Count of ended (window-closed) trade floors where I finished rank 1
+ * by P&L. Used by the profile/history "wins" rollup.
+ */
+export function tradeFloorsWonCount(
+  email: string,
+  now = Date.now(),
+): number {
+  const ended = getMyTradeFloors(email).filter((f) => f.endAt < now);
+  return ended.filter((f) => {
+    const rows = competitionLeaderboard(f, email);
+    return rows[0]?.email === email;
+  }).length;
 }
 
 /** Pretty-print rupees as ₹1,23,456 (Indian grouping). */
