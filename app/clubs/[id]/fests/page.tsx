@@ -139,6 +139,21 @@ function FestRow({ fest }: { fest: Fest }) {
           >
             {status}
           </span>
+          {fest.lifecycleStatus === "pending_approval" && (
+            <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300">
+              Pending
+            </span>
+          )}
+          {fest.lifecycleStatus === "rejected" && (
+            <span className="rounded-md bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-300">
+              Rejected
+            </span>
+          )}
+          {fest.privacy && (
+            <span className="rounded-md bg-ink-900 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-ink-400">
+              {fest.privacy}
+            </span>
+          )}
           <span className="font-mono text-ink-400">{fest.id}</span>
         </div>
         <div className="mt-1 font-medium text-ink-50">{fest.name}</div>
@@ -154,6 +169,14 @@ function FestRow({ fest }: { fest: Fest }) {
               custom
             </span>
           )}
+          {(fest.categories ?? []).slice(0, 4).map((c) => (
+            <span
+              key={c}
+              className="rounded-md bg-brand-500/15 px-1.5 py-0.5 text-brand-300"
+            >
+              {c}
+            </span>
+          ))}
         </div>
         <div className="mt-1 text-xs text-ink-500">
           {fest.startDate} → {fest.endDate} · {fest.participants.length} player
@@ -182,7 +205,11 @@ function CreateFestCard({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState(today);
+  const [startTime, setStartTime] = useState("09:00");
   const [endDate, setEndDate] = useState(weekStr);
+  const [endTime, setEndTime] = useState("18:00");
+  const [privacy, setPrivacy] = useState<"public" | "private">("private");
+  const [categoriesInput, setCategoriesInput] = useState("");
   const [eventType, setEventType] = useState<FestEventType>("paper-trading");
   const [difficulty, setDifficulty] = useState<FestDifficulty>("intermediate");
   const [source, setSource] = useState<FestSource>("system");
@@ -215,6 +242,24 @@ function CreateFestCard({
     e.preventDefault();
     setError(null);
     if (!user) return;
+
+    const startsAtMs = new Date(`${startDate}T${startTime}:00`).getTime();
+    const endsAtMs = new Date(`${endDate}T${endTime}:00`).getTime();
+    if (
+      Number.isFinite(startsAtMs) &&
+      Number.isFinite(endsAtMs) &&
+      endsAtMs <= startsAtMs
+    ) {
+      setError("End must be after start.");
+      return;
+    }
+
+    const categories = categoriesInput
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .slice(0, 12);
+
     const r = createFest({
       clubId,
       name,
@@ -226,6 +271,10 @@ function CreateFestCard({
       difficulty,
       source,
       questions: source === "custom" ? questions : undefined,
+      privacy,
+      categories,
+      startsAtMs: Number.isFinite(startsAtMs) ? startsAtMs : undefined,
+      endsAtMs: Number.isFinite(endsAtMs) ? endsAtMs : undefined,
     });
     if (!r.ok) {
       setError(r.error);
@@ -283,6 +332,17 @@ function CreateFestCard({
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-ink-300">
+            Start time
+          </span>
+          <input
+            type="time"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+            className="input"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-ink-300">
             End date
           </span>
           <input
@@ -292,6 +352,63 @@ function CreateFestCard({
             className="input"
             required
           />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-ink-300">
+            End time
+          </span>
+          <input
+            type="time"
+            value={endTime}
+            onChange={(e) => setEndTime(e.target.value)}
+            className="input"
+          />
+        </label>
+      </div>
+
+      {/* Phase 43 — Privacy + Categories */}
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="rounded-lg border border-ink-700 bg-ink-950 p-4">
+          <h3 className="text-xs font-medium uppercase tracking-wider text-ink-400">
+            Privacy
+          </h3>
+          <div className="mt-3 flex gap-1.5">
+            {(["private", "public"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPrivacy(p)}
+                className={
+                  "flex-1 rounded-md border px-2 py-1.5 text-xs uppercase tracking-wider transition " +
+                  (privacy === p
+                    ? "border-brand-500 bg-brand-500/10 text-brand-200"
+                    : "border-ink-700 text-ink-300 hover:border-ink-500")
+                }
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[10px] text-ink-500">
+            {privacy === "private"
+              ? "Invite-only via 6-char code. Goes live instantly."
+              : "Anyone with the code can join. Reviewed by an admin first."}
+          </p>
+        </div>
+        <label className="block rounded-lg border border-ink-700 bg-ink-950 p-4">
+          <span className="text-xs font-medium uppercase tracking-wider text-ink-400">
+            Categories / topics
+          </span>
+          <input
+            type="text"
+            value={categoriesInput}
+            onChange={(e) => setCategoriesInput(e.target.value)}
+            placeholder="banking, earnings, options"
+            className="input mt-3"
+          />
+          <p className="mt-2 text-[10px] text-ink-500">
+            Comma-separated tags. Up to 12.
+          </p>
         </label>
       </div>
 
@@ -471,12 +588,35 @@ function CreateFestCard({
       )}
 
       {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
+
+      <div
+        className={
+          "mt-5 rounded-xl border px-4 py-3 text-sm " +
+          (privacy === "public"
+            ? "border-amber-500/40 bg-amber-500/5 text-amber-200"
+            : "border-brand-500/40 bg-brand-500/5 text-brand-200")
+        }
+      >
+        {privacy === "public" ? (
+          <>
+            <strong>Admin approval required.</strong> Public fests are
+            reviewed first. You&apos;ll see it as &quot;Pending&quot; until an
+            admin approves.
+          </>
+        ) : (
+          <>
+            <strong>Goes live instantly.</strong> Private fest — share the
+            6-char code with whoever you want to invite.
+          </>
+        )}
+      </div>
+
       <div className="mt-5">
         <button
           type="submit"
           className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-brand-300"
         >
-          Create fest
+          {privacy === "public" ? "Submit for approval" : "Create fest"}
         </button>
       </div>
     </form>

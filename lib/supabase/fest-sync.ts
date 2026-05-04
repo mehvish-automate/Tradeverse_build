@@ -33,6 +33,15 @@ export async function mirrorFest(fest: Fest): Promise<boolean> {
     difficulty: fest.difficulty ?? "intermediate",
     source: fest.source ?? "system",
     created_by: userId,
+    // Phase 43 launch fields. New columns are nullable / defaulted in
+    // the schema so re-running this against a pre-Phase-43 DB is safe.
+    privacy: fest.privacy ?? "private",
+    status: fest.lifecycleStatus ?? "live",
+    categories: fest.categories ?? [],
+    starts_at: fest.startsAtMs
+      ? new Date(fest.startsAtMs).toISOString()
+      : null,
+    ends_at: fest.endsAtMs ? new Date(fest.endsAtMs).toISOString() : null,
   };
   const { error: festErr } = await (supabase.from("fests") as unknown as {
     upsert: (
@@ -110,6 +119,11 @@ export async function pullMyFests(): Promise<number> {
     source: string;
     created_by: string;
     created_at: string;
+    privacy: "public" | "private" | null;
+    status: "pending_approval" | "live" | "ended" | "rejected" | null;
+    categories: string[] | null;
+    starts_at: string | null;
+    ends_at: string | null;
   };
   const festsRes = await (supabase.from("fests") as unknown as {
     select: (cols: string) => {
@@ -120,7 +134,7 @@ export async function pullMyFests(): Promise<number> {
     };
   })
     .select(
-      "id, club_id, name, description, start_date, end_date, event_type, difficulty, source, created_by, created_at",
+      "id, club_id, name, description, start_date, end_date, event_type, difficulty, source, created_by, created_at, privacy, status, categories, starts_at, ends_at",
     )
     .in("id", festIds);
   if (festsRes.error || !festsRes.data) return 0;
@@ -186,6 +200,11 @@ export async function pullMyFests(): Promise<number> {
       createdBy: creator?.email ?? f.created_by,
       createdAt: new Date(f.created_at).getTime(),
       participants,
+      privacy: f.privacy ?? "private",
+      lifecycleStatus: f.status ?? "live",
+      categories: f.categories ?? [],
+      startsAtMs: f.starts_at ? new Date(f.starts_at).getTime() : undefined,
+      endsAtMs: f.ends_at ? new Date(f.ends_at).getTime() : undefined,
     };
   });
 

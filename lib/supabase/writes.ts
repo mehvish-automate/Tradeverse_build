@@ -132,6 +132,84 @@ export async function setTradeFloorStatus(
   return !error;
 }
 
+/** Admin-only — flip a fest's status. RLS gates by is_admin. */
+export async function setFestStatus(
+  festId: string,
+  status: "live" | "rejected" | "ended",
+): Promise<boolean> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return false;
+  const { error } = await (supabase.from("fests") as unknown as {
+    update: (vals: { status: string }) => {
+      eq: (
+        col: string,
+        val: string,
+      ) => Promise<{ error: { message: string } | null }>;
+    };
+  })
+    .update({ status })
+    .eq("id", festId);
+  return !error;
+}
+
+/** Admin-only — list every fest in pending_approval status. */
+export async function listPendingFests(): Promise<
+  | {
+      id: string;
+      name: string;
+      privacy: "public" | "private";
+      club_id: string;
+      event_type: string;
+      difficulty: string;
+      categories: string[];
+      start_date: string;
+      end_date: string;
+      created_by: string;
+      created_at: string;
+    }[]
+  | null
+> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return null;
+  const res = await (supabase.from("fests") as unknown as {
+    select: (cols: string) => {
+      eq: (
+        col: string,
+        val: string,
+      ) => {
+        order: (
+          col: string,
+          opts: { ascending: boolean },
+        ) => Promise<{
+          data:
+            | {
+                id: string;
+                name: string;
+                privacy: "public" | "private";
+                club_id: string;
+                event_type: string;
+                difficulty: string;
+                categories: string[];
+                start_date: string;
+                end_date: string;
+                created_by: string;
+                created_at: string;
+              }[]
+            | null;
+          error: { message: string } | null;
+        }>;
+      };
+    };
+  })
+    .select(
+      "id, name, privacy, club_id, event_type, difficulty, categories, start_date, end_date, created_by, created_at",
+    )
+    .eq("status", "pending_approval")
+    .order("created_at", { ascending: false });
+  if (res.error) return null;
+  return res.data ?? [];
+}
+
 /** Admin-only — list every floor in pending_approval status. */
 export async function listPendingTradeFloors(): Promise<
   | {

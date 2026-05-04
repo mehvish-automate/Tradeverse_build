@@ -188,6 +188,11 @@ export interface Database {
           source: "system" | "custom";
           created_by: string;
           created_at: string;
+          privacy: "public" | "private";
+          status: "pending_approval" | "live" | "ended" | "rejected";
+          categories: string[];
+          starts_at: string | null;
+          ends_at: string | null;
         };
         Insert: {
           id?: string;
@@ -201,6 +206,11 @@ export interface Database {
           source?: "system" | "custom";
           created_by: string;
           created_at?: string;
+          privacy?: "public" | "private";
+          status?: "pending_approval" | "live" | "ended" | "rejected";
+          categories?: string[];
+          starts_at?: string | null;
+          ends_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["fests"]["Insert"]>;
       };

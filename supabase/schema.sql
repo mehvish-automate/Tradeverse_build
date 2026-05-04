@@ -137,6 +137,17 @@ create table if not exists public.fests (
   check (end_date >= start_date)
 );
 
+-- Phase 43 — fest launch polish + admin approval. New columns are
+-- added if-not-exists with safe defaults so legacy rows stay valid.
+alter table public.fests
+  add column if not exists privacy text not null default 'private'
+    check (privacy in ('public','private')),
+  add column if not exists status text not null default 'live'
+    check (status in ('pending_approval','live','ended','rejected')),
+  add column if not exists categories text[] not null default array[]::text[],
+  add column if not exists starts_at timestamptz,
+  add column if not exists ends_at timestamptz;
+
 create table if not exists public.fest_participants (
   fest_id    text not null references public.fests on delete cascade,
   user_id    uuid not null references auth.users on delete cascade,
@@ -366,6 +377,8 @@ drop policy if exists "self join club"                 on public.club_members;
 drop policy if exists "self leave club"                on public.club_members;
 drop policy if exists "fests public read"              on public.fests;
 drop policy if exists "fests owner creates"            on public.fests;
+drop policy if exists "fests admin update"             on public.fests;
+drop policy if exists "fests creator update"           on public.fests;
 drop policy if exists "fest participants public read"  on public.fest_participants;
 drop policy if exists "self join fest"                 on public.fest_participants;
 drop policy if exists "floor posts readable"           on public.floor_posts;
@@ -510,6 +523,27 @@ create policy "fests owner creates"
         and m.role = 'owner'
     )
   );
+
+-- Admins can update fest status (approve / reject pending public fests).
+create policy "fests admin update"
+  on public.fests for update to authenticated
+  using (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.is_admin = true
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.is_admin = true
+    )
+  );
+
+-- Creators can update their own fest's notes / non-status fields.
+create policy "fests creator update"
+  on public.fests for update to authenticated
+  using (auth.uid() = created_by) with check (auth.uid() = created_by);
 
 -- fest_participants
 create policy "fest participants public read"
@@ -669,6 +703,7 @@ create trigger on_auth_user_created
 
 create index if not exists daily_results_user_date_idx on public.daily_results(user_id, date_key desc);
 create index if not exists fests_club_idx               on public.fests(club_id);
+create index if not exists fests_status_idx             on public.fests(status, created_at desc);
 create index if not exists floor_posts_club_idx         on public.floor_posts(club_id, created_at desc);
 create index if not exists orders_user_idx              on public.orders(user_id, placed_at desc);
 create index if not exists portfolios_user_idx          on public.portfolios(user_id, created_at desc);

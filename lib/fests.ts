@@ -32,6 +32,13 @@ export type FestQuestion = {
   explain?: string;
 };
 
+export type FestPrivacy = "public" | "private";
+export type FestLifecycleStatus =
+  | "pending_approval"
+  | "live"
+  | "ended"
+  | "rejected";
+
 export type Fest = {
   id: string; // 6-char invite code (A–Z, 2–9)
   clubId: string;
@@ -46,7 +53,29 @@ export type Fest = {
   difficulty?: FestDifficulty;
   source?: FestSource;
   questions?: FestQuestion[];
+  // Phase 43 launch fields
+  privacy?: FestPrivacy;
+  lifecycleStatus?: FestLifecycleStatus;
+  categories?: string[];
+  /** Optional time-of-day precision (ms epoch). Fall back to startDate. */
+  startsAtMs?: number;
+  endsAtMs?: number;
 };
+
+/** Default missing Phase 43 fields when reading legacy fests. */
+function withFestDefaults(f: Fest): Fest {
+  return {
+    privacy: "private",
+    lifecycleStatus: "live",
+    categories: [],
+    ...f,
+  };
+}
+
+/** Public fests need admin approval; private fests go live instantly. */
+export function festNeedsAdminApproval(privacy: FestPrivacy): boolean {
+  return privacy === "public";
+}
 
 export const FEST_EVENT_TYPES: { id: FestEventType; label: string; blurb: string }[] = [
   { id: "paper-trading", label: "Paper trading", blurb: "Who finishes the window with the highest paper P&L." },
@@ -79,7 +108,8 @@ function genCode(): string {
 function readFests(): Fest[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(FESTS_KEY) || "[]") as Fest[];
+    const raw = JSON.parse(localStorage.getItem(FESTS_KEY) || "[]") as Fest[];
+    return raw.map(withFestDefaults);
   } catch {
     return [];
   }
@@ -130,7 +160,12 @@ export function createFest(input: {
   difficulty?: FestDifficulty;
   source?: FestSource;
   questions?: FestQuestion[];
-}): { ok: true; fest: Fest } | { ok: false; error: string } {
+  // Phase 43 launch fields
+  privacy?: FestPrivacy;
+  categories?: string[];
+  startsAtMs?: number;
+  endsAtMs?: number;
+}): { ok: true; fest: Fest; needsApproval: boolean } | { ok: false; error: string } {
   const club = getClub(input.clubId);
   if (!club) return { ok: false, error: "Club not found." };
 
@@ -173,6 +208,16 @@ export function createFest(input: {
     questions = qs;
   }
 
+  const privacy = input.privacy ?? "private";
+  const categories = (input.categories ?? [])
+    .map((c) => c.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+  const needsApproval = festNeedsAdminApproval(privacy);
+  const lifecycleStatus: FestLifecycleStatus = needsApproval
+    ? "pending_approval"
+    : "live";
+
   const fest: Fest = {
     id,
     clubId: input.clubId,
@@ -193,6 +238,11 @@ export function createFest(input: {
     difficulty: input.difficulty ?? "intermediate",
     source,
     questions,
+    privacy,
+    lifecycleStatus,
+    categories,
+    startsAtMs: input.startsAtMs,
+    endsAtMs: input.endsAtMs,
   };
   all.push(fest);
   writeFests(all);
@@ -208,7 +258,7 @@ export function createFest(input: {
     } catch { /* best-effort */ }
   })();
 
-  return { ok: true, fest };
+  return { ok: true, fest, needsApproval };
 }
 
 export function joinFest(
@@ -218,6 +268,10 @@ export function joinFest(
   const all = readFests();
   const fest = all.find((f) => f.id === code.toUpperCase());
   if (!fest) return { ok: false, error: "No fest with that code." };
+  if (fest.lifecycleStatus === "pending_approval")
+    return { ok: false, error: "This fest is awaiting admin approval." };
+  if (fest.lifecycleStatus === "rejected")
+    return { ok: false, error: "This fest was rejected." };
   if (fest.participants.some((p) => p.email === user.email)) {
     return { ok: true, fest };
   }
