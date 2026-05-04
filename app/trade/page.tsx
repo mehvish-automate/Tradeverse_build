@@ -215,7 +215,11 @@ function Inner() {
           <SessionChip />
           <MarketDataChip />
           <Link
-            href={`/chart/${symbol}`}
+            href={
+              floor
+                ? `/chart/${symbol}?floor=${floor.id}`
+                : `/chart/${symbol}`
+            }
             className="rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-100 hover:bg-ink-900"
           >
             Open chart →
