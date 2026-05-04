@@ -7,8 +7,27 @@
 //
 // Everything is deterministic per (symbol, timestamp). A real NSE
 // feed replaces generateBars() later without changing callers.
+//
+// V0.1 disclosure: marketDataSource() is the single seam between mock
+// and live. Today it always returns "mock". When NEXT_PUBLIC_LIVE_QUOTES
+// is wired to a real provider (Polygon / Alpha Vantage / NSE feed),
+// this returns "live" and downstream callers can swap their underlying
+// price() → providerQuote() implementation. Until then, the UI shows
+// a "Synthetic prices" disclosure so users aren't misled.
 
 import { getStock, price } from "./stocks";
+
+export type MarketDataSource = "mock" | "live";
+
+export function marketDataSource(): MarketDataSource {
+  // Wire to a real provider by setting NEXT_PUBLIC_LIVE_QUOTES=1 and
+  // implementing the live path in tickPrice / generateBars. Until then,
+  // honest default = "mock".
+  if (typeof process !== "undefined") {
+    if (process.env.NEXT_PUBLIC_LIVE_QUOTES === "1") return "live";
+  }
+  return "mock";
+}
 
 export type Timeframe = "1m" | "5m" | "15m" | "1h" | "1d" | "1w";
 

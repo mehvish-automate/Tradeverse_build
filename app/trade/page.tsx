@@ -7,7 +7,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import { formatRupees } from "@/lib/competitions";
-import { sessionAt, sessionLabel } from "@/lib/marketData";
+import { marketDataSource, sessionAt, sessionLabel } from "@/lib/marketData";
 import { bookAtPrice, L2Book } from "@/lib/orderbook";
 import {
   GLOBAL_SCOPE,
@@ -213,6 +213,7 @@ function Inner() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <SessionChip />
+          <MarketDataChip />
           <Link
             href={`/chart/${symbol}`}
             className="rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-100 hover:bg-ink-900"
@@ -343,6 +344,28 @@ function CompetitionBanner({ floor }: { floor: TradeFloor }) {
         </Link>
       </div>
     </div>
+  );
+}
+
+function MarketDataChip() {
+  const src = marketDataSource();
+  if (src === "live") {
+    return (
+      <span
+        className="rounded-md bg-brand-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-brand-300"
+        title="Real-time market data"
+      >
+        Live data
+      </span>
+    );
+  }
+  return (
+    <span
+      className="rounded-md bg-amber-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-300"
+      title="Prices are deterministic synthetic data, not a live feed. Real-time data integration is a future infra commitment."
+    >
+      Synthetic prices
+    </span>
   );
 }
 
