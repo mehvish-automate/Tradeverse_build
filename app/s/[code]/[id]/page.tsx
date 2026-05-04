@@ -39,9 +39,13 @@ function isShareKind(s: string): s is ShareKind {
 }
 
 function Inner() {
-  const params = useParams<{ kind: string; id: string }>();
+  // Param is named `code` to share the same dynamic-segment name as
+  // the sibling /s/[code]/page.tsx — Next requires identical param
+  // names at the same path depth. Semantically here it carries the
+  // share kind ('floor' | 'fest' | 'event').
+  const params = useParams<{ code: string; id: string }>();
   const search = useSearchParams();
-  const kindRaw = String(params?.kind ?? "");
+  const kindRaw = String(params?.code ?? "");
   const id = String(params?.id ?? "").toUpperCase();
   const refCode = search?.get("ref")?.toUpperCase() ?? "";
 
