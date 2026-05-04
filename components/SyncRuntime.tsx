@@ -32,6 +32,7 @@ import {
   pullStreakFreezes,
 } from "@/lib/supabase/progress-sync";
 import { useSession } from "@/lib/session";
+import { checkAlerts } from "@/lib/alerts";
 
 /**
  * Hands the localStorage progress state to Supabase in the background.
@@ -60,6 +61,10 @@ export function SyncRuntime() {
       // Idempotent — only inserts badges that aren't already in
       // badge_unlocks. Cheap to re-run on every tick.
       await mirrorEarnedBadges();
+      // Local-only: flip any armed price alerts whose condition met.
+      // The user sees the trigger in the inbox / bell counter on next
+      // render; a background tab still picks them up via this tick.
+      if (user) checkAlerts(user.email);
     };
 
     // First-load only: pull paper-trading state + strategy portfolios

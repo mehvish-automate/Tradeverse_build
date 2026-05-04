@@ -139,6 +139,12 @@ function Inner() {
             {watched ? "Watching ✓" : "+ Watchlist"}
           </button>
           <Link
+            href={`/alerts?symbol=${symbol}`}
+            className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-100 hover:bg-ink-900"
+          >
+            🔔 Alert
+          </Link>
+          <Link
             href={
               floor
                 ? `/charts?symbols=${symbol}&floor=${floor.id}`

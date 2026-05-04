@@ -40,6 +40,7 @@ const MARKETING_LINKS: NavLink[] = [
 ];
 
 const SECONDARY_AUTHED_LINKS: NavLink[] = [
+  { href: "/alerts", label: "Alerts" },
   { href: "/badges", label: "Badges" },
   { href: "/leaderboards", label: "Leaderboards" },
   { href: "/history", label: "History" },

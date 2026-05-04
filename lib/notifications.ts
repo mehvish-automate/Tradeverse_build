@@ -16,6 +16,7 @@ import { EVENTS, isResolved as eventResolved } from "./events";
 import { myAllocation } from "./eventPortfolios";
 import { mySessions, sessionStatus } from "./sessions";
 import { currentRsiAlerts } from "./watchlist";
+import { checkAlerts, triggeredAlerts } from "./alerts";
 
 export type NotificationKind =
   | "reward"
@@ -27,7 +28,8 @@ export type NotificationKind =
   | "fest-ending"
   | "session-starting"
   | "session-live"
-  | "rsi-alert";
+  | "rsi-alert"
+  | "price-alert";
 
 export type Notification = {
   id: string;
@@ -229,6 +231,22 @@ export function buildFeed(email: string, now = new Date()): Notification[] {
       ts: nowMs,
       href: "/watchlist",
       emoji: a.zone === "overbought" ? "🔥" : "❄️",
+    });
+  }
+
+  // Price alerts. checkAlerts runs synchronously here so reading the
+  // bell or opening /inbox always reflects current prices. One-shot
+  // alerts disarm after firing — re-arm from /alerts to listen again.
+  checkAlerts(email, now);
+  for (const a of triggeredAlerts(email)) {
+    out.push({
+      id: `price-alert:${a.id}`,
+      kind: "price-alert",
+      title: `${a.symbol} is ${a.condition} ₹${a.price}`,
+      body: `Triggered at ₹${a.triggeredPrice.toFixed(2)}. Manage in alerts.`,
+      ts: a.triggeredAt,
+      href: "/alerts",
+      emoji: a.condition === "above" ? "📈" : "📉",
     });
   }
 
