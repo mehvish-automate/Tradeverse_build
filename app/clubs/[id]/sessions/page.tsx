@@ -251,6 +251,7 @@ function CreateSessionCard({
           <input
             className="input"
             type="date"
+            min={new Date().toISOString().slice(0, 10)}
             value={date}
             onChange={(e) => setDate(e.target.value)}
             required

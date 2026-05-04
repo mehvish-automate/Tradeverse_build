@@ -324,6 +324,7 @@ function CreateFestCard({
           </span>
           <input
             type="date"
+            min={today}
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             className="input"
@@ -347,6 +348,7 @@ function CreateFestCard({
           </span>
           <input
             type="date"
+            min={startDate || today}
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             className="input"

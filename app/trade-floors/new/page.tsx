@@ -231,6 +231,7 @@ function Inner() {
               <input
                 type="datetime-local"
                 required
+                min={defaultDateTimeLocal(0)}
                 value={startStr}
                 onChange={(e) => setStartStr(e.target.value)}
                 className="input"
@@ -240,6 +241,7 @@ function Inner() {
               <input
                 type="datetime-local"
                 required
+                min={startStr || defaultDateTimeLocal(0)}
                 value={endStr}
                 onChange={(e) => setEndStr(e.target.value)}
                 className="input"
