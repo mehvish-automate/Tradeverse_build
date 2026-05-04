@@ -16,6 +16,7 @@ import {
   needsAdminApproval,
 } from "@/lib/tradeFloors";
 import { writeTradeFloor } from "@/lib/supabase/writes";
+import { Club, myClubs } from "@/lib/clubs";
 import { SECTORS, STOCKS } from "@/lib/stocks";
 
 export default function NewTradeFloorPage() {
@@ -55,6 +56,22 @@ function Inner() {
   const [pickedSymbols, setPickedSymbols] = useState<string[]>([]);
   const [assetClasses, setAssetClasses] = useState<AssetClass[]>(["stocks"]);
   const [region, setRegion] = useState<MarketRegion>("IN");
+
+  // Phase 42 finishing touch — clubs the user owns can be the
+  // creator-kind. Default = launch personally.
+  const ownedClubs = useMemo<Club[]>(
+    () =>
+      user
+        ? myClubs(user.email).filter((c) =>
+            c.members.some(
+              (m) => m.email === user.email && m.role === "owner",
+            ),
+          )
+        : [],
+    [user],
+  );
+  // hostMode: 'user' (default) or club id when launching as a club.
+  const [hostMode, setHostMode] = useState<string>("user");
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -100,6 +117,8 @@ function Inner() {
     }
     const virtualCapital = virtualLakhs * 100_000;
 
+    const createdByKind = hostMode === "user" ? "user" : "club";
+
     const r = createTradeFloor({
       name,
       creator: { email: user.email, displayName: user.displayName },
@@ -111,6 +130,7 @@ function Inner() {
       stockUniverse: universe,
       assetClasses,
       marketRegion: region,
+      createdByKind,
     });
 
     if (!r.ok) {
@@ -166,6 +186,25 @@ function Inner() {
               className="input"
             />
           </Field>
+          {ownedClubs.length > 0 && (
+            <RadioRow
+              label="Launch as"
+              value={hostMode}
+              onChange={(v) => setHostMode(v)}
+              options={[
+                {
+                  value: "user",
+                  label: `@${user.displayName}`,
+                  blurb: "Personal launch.",
+                },
+                ...ownedClubs.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                  blurb: "Launch under your club.",
+                })),
+              ]}
+            />
+          )}
           <RadioRow
             label="Privacy"
             value={privacy}
