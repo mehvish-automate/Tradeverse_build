@@ -153,6 +153,20 @@ export async function supabaseSignOut() {
 }
 
 /**
+ * Sign out everywhere: end the Supabase session AND wipe every local
+ * TradeVerse cache so the next user on this device starts clean.
+ * Use this from sign-out buttons; the bare lib/session.signOut() only
+ * clears localStorage and is exposed via useSession() as a fallback.
+ */
+export async function signOutEverywhere(): Promise<void> {
+  // Local wipe first so that even if the Supabase signout fails (no
+  // network), the device is logged out from the user's perspective.
+  const { signOut } = await import("./session");
+  signOut();
+  await supabaseSignOut();
+}
+
+/**
  * Universal signup.
  *
  * Supabase mode: email + password signUp, and writes a local placeholder

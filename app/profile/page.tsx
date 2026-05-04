@@ -9,6 +9,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { TRACKS } from "@/lib/learn";
 import { nextLesson, overallCompletion } from "@/lib/learnProgress";
 import { isAmbassador } from "@/lib/ambassadors";
+import { signOutEverywhere } from "@/lib/auth";
 import { earnedCount } from "@/lib/badges";
 import { getInstitute } from "@/lib/clubs";
 import {
@@ -139,8 +140,9 @@ function ProfileInner() {
           </p>
         </div>
         <button
-          onClick={() => {
-            signOut();
+          onClick={async () => {
+            await signOutEverywhere();
+            signOut(); // refresh in-memory state
             router.push("/");
           }}
           className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-900"

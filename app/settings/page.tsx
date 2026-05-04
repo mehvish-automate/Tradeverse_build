@@ -9,6 +9,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { getInstitute, INSTITUTES } from "@/lib/clubs";
 import { getHomeInstitute, setHomeInstitute } from "@/lib/onboarding";
 import { supabaseConfigured, getBrowserSupabase } from "@/lib/supabase/client";
+import { signOutEverywhere } from "@/lib/auth";
 import {
   pullDailyResults,
   syncDailyResults,
@@ -147,13 +148,14 @@ function SettingsInner() {
     URL.revokeObjectURL(url);
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     const phrase = prompt(
       `This wipes your TradeVerse data on this device. Type DELETE to confirm.`,
     );
     if (phrase !== "DELETE") return;
     deleteUserData(user!.email);
-    signOut();
+    await signOutEverywhere();
+    signOut(); // refresh in-memory session state
     router.push("/");
   }
 

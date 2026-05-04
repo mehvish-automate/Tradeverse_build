@@ -77,7 +77,18 @@ export function signIn(email: string): { ok: true; user: User } | { ok: false; e
 }
 
 export function signOut() {
-  localStorage.removeItem(SESSION_KEY);
+  if (typeof window === "undefined") return;
+  // Clear every TradeVerse client-side cache so a shared device hands
+  // a clean slate to the next user. Cloud pull on next sign-in reseeds
+  // anything the user actually owns. We keep this aggressive (every
+  // `tv.*` key) rather than enumerate per-feature, because the spec
+  // expects "sign-out" to feel like a logout, not a partial wipe.
+  const toRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith("tv.")) toRemove.push(k);
+  }
+  for (const k of toRemove) localStorage.removeItem(k);
 }
 
 export function getCurrentUser(): User | null {
