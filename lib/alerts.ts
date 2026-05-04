@@ -92,6 +92,14 @@ export function createAlert(
   const all = read(email);
   all.push(alert);
   write(email, all);
+
+  void (async () => {
+    try {
+      const { mirrorAlert } = await import("./supabase/alerts-sync");
+      await mirrorAlert(alert);
+    } catch { /* best-effort */ }
+  })();
+
   return { ok: true, alert };
 }
 
@@ -100,6 +108,14 @@ export function removeAlert(email: string, id: string): boolean {
   const next = all.filter((a) => a.id !== id);
   if (next.length === all.length) return false;
   write(email, next);
+
+  void (async () => {
+    try {
+      const { mirrorAlertDelete } = await import("./supabase/alerts-sync");
+      await mirrorAlertDelete(id);
+    } catch { /* best-effort */ }
+  })();
+
   return true;
 }
 
@@ -111,6 +127,15 @@ export function rearmAlert(email: string, id: string): boolean {
   a.triggeredAt = undefined;
   a.triggeredPrice = undefined;
   write(email, all);
+
+  const snapshot = { ...a };
+  void (async () => {
+    try {
+      const { mirrorAlert } = await import("./supabase/alerts-sync");
+      await mirrorAlert(snapshot);
+    } catch { /* best-effort */ }
+  })();
+
   return true;
 }
 
@@ -137,7 +162,18 @@ export function checkAlerts(email: string, now = new Date()): PriceAlert[] {
     fired.push(a);
     dirty = true;
   }
-  if (dirty) write(email, all);
+  if (dirty) {
+    write(email, all);
+    // Fire-and-forget cloud bulk-upsert so other devices see the
+    // fired/disarmed state on their next pull.
+    const snapshot = fired.map((a) => ({ ...a }));
+    void (async () => {
+      try {
+        const { mirrorAlerts } = await import("./supabase/alerts-sync");
+        await mirrorAlerts(snapshot);
+      } catch { /* best-effort */ }
+    })();
+  }
   return fired;
 }
 

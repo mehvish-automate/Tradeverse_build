@@ -109,9 +109,11 @@ function Inner() {
       )}
 
       <p className="mt-10 text-xs text-ink-500">
-        V0.1 note: alerts live in this device&apos;s localStorage. Cross-device
-        sync via Supabase + Web Push delivery is a future phase. Prices are
-        deterministic synthetic until a live data feed is wired.
+        Alerts sync across your devices via Supabase. Web Push delivery is
+        a future enhancement — for now, an alert lands in your inbox the
+        moment it crosses, and your other devices pick it up on their next
+        sync tick. Prices stay deterministic-synthetic until a live data
+        feed is wired.
       </p>
     </>
   );

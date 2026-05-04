@@ -526,6 +526,34 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["notification_reads"]["Insert"]>;
       };
 
+      alerts: {
+        Row: {
+          id: string;
+          user_id: string;
+          symbol: string;
+          condition: "above" | "below";
+          price: number;
+          one_shot: boolean;
+          armed: boolean;
+          triggered_at: string | null;
+          triggered_price: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          symbol: string;
+          condition: "above" | "below";
+          price: number;
+          one_shot?: boolean;
+          armed?: boolean;
+          triggered_at?: string | null;
+          triggered_price?: number | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["alerts"]["Insert"]>;
+      };
+
       share_clicks: {
         Row: {
           id: string;

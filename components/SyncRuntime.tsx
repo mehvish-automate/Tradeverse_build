@@ -21,6 +21,7 @@ import { pullEventAllocations } from "@/lib/supabase/events-sync";
 import { pullClubSessions } from "@/lib/supabase/session-sync";
 import { pullNotificationReads } from "@/lib/supabase/notifications-sync";
 import { pullShareStats } from "@/lib/supabase/share-sync";
+import { pullAlerts } from "@/lib/supabase/alerts-sync";
 import {
   pullWatchlist,
   pushLocalWatchlist,
@@ -89,6 +90,7 @@ export function SyncRuntime() {
     void pullClubSessions();
     void pullNotificationReads();
     void pullShareStats();
+    void pullAlerts();
     void run();
 
     const iv = setInterval(() => {

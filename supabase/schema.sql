@@ -334,6 +334,20 @@ create table if not exists public.notification_reads (
   primary key (user_id, notif_id)
 );
 
+-- --- Price alerts (Alerts cloud sync) ---
+create table if not exists public.alerts (
+  id               uuid primary key default gen_random_uuid(),
+  user_id          uuid not null references auth.users on delete cascade,
+  symbol           text not null,
+  condition        text not null check (condition in ('above','below')),
+  price            numeric not null check (price > 0),
+  one_shot         boolean not null default true,
+  armed            boolean not null default true,
+  triggered_at     timestamptz,
+  triggered_price  numeric,
+  created_at       timestamptz not null default now()
+);
+
 -- --- Share-link tracking (Phase 48.5) ---
 -- Inviters generate /s/<kind>/<id>?ref=<code> URLs. Each click +
 -- registration that lands on a TradeVerse account writes one row here.
@@ -385,6 +399,7 @@ alter table public.event_allocations   enable row level security;
 alter table public.live_sessions       enable row level security;
 alter table public.session_rsvps       enable row level security;
 alter table public.notification_reads  enable row level security;
+alter table public.alerts              enable row level security;
 alter table public.share_clicks        enable row level security;
 alter table public.share_joins         enable row level security;
 
@@ -440,6 +455,7 @@ drop policy if exists "session rsvps readable"         on public.session_rsvps;
 drop policy if exists "self rsvp"                      on public.session_rsvps;
 drop policy if exists "self un-rsvp"                   on public.session_rsvps;
 drop policy if exists "own notification reads"         on public.notification_reads;
+drop policy if exists "own alerts"                     on public.alerts;
 drop policy if exists "share clicks inviter read"      on public.share_clicks;
 drop policy if exists "share clicks insert"            on public.share_clicks;
 drop policy if exists "share joins inviter read"       on public.share_joins;
@@ -681,6 +697,11 @@ create policy "own notification reads"
   on public.notification_reads for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
+-- alerts: own rows only
+create policy "own alerts"
+  on public.alerts for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
 -- share_clicks: inviter reads their own; any authed clicker can insert
 -- (the application enforces inviter_id != auth.uid() to block self-
 -- attribution; we also enforce it as a check for defense in depth).
@@ -753,5 +774,6 @@ create index if not exists event_allocations_user_idx   on public.event_allocati
 create index if not exists live_sessions_club_idx       on public.live_sessions(club_id, starts_at desc);
 create index if not exists session_rsvps_user_idx       on public.session_rsvps(user_id);
 create index if not exists notification_reads_user_idx  on public.notification_reads(user_id);
+create index if not exists alerts_user_idx              on public.alerts(user_id, created_at desc);
 create index if not exists share_clicks_inviter_idx     on public.share_clicks(inviter_id, clicked_at desc);
 create index if not exists share_joins_inviter_idx      on public.share_joins(inviter_id, joined_at desc);
