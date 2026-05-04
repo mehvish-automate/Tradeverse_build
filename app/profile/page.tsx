@@ -264,11 +264,12 @@ function ProfileInner() {
           className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
         >
           <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
-            Social
+            Compete
           </div>
           <div className="mt-1 text-xl font-semibold">Trade floors</div>
           <p className="mt-2 text-sm text-ink-300">
-            3–20 friends, weekly cycle, zero money.
+            Real-time virtual trading competitions. Friends, capital, window —
+            ranked by live P&amp;L. Zero real money.
           </p>
           <div className="mt-4 text-sm text-ink-300 group-hover:text-ink-50">
             Open →

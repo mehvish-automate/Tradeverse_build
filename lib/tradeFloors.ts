@@ -324,6 +324,6 @@ export function weeklyLeaderboard(
 }
 
 export function whatsappInviteUrl(tradeFloor: TradeFloor): string {
-  const text = `Join my TradeVerse trade floor "${tradeFloor.name}". Code: ${tradeFloor.id} — https://tradeverse.app/trade-floors/${tradeFloor.id}`;
+  const text = `Join my TradeVerse trading competition "${tradeFloor.name}". Code: ${tradeFloor.id} — https://tradeverse.app/trade-floors/${tradeFloor.id}`;
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }

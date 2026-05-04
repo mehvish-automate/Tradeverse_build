@@ -26,11 +26,11 @@ export function HeroOfferings() {
         <OfferingCard
           badge="H2"
           title="Trade Floors"
-          tagline="3–20 friends. Same questions. Weekly leaderboard. Zero money."
+          tagline="Real-time virtual trading competitions with friends. Live P&L. Zero money."
           bullets={[
             "WhatsApp-native invites — 2 taps from group chat to trade floor",
-            "Ranked by accuracy and speed, not capital",
-            "Weekly cycle with a clean reset — no compounding advantage",
+            "Pick window, capital, stock universe — public floors go through admin review",
+            "Ranked by live mark-to-market P&L during the competition window",
             "India-flavored social loop, zero regulatory exposure",
           ]}
           why="The virality engine."

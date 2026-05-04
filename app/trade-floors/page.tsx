@@ -44,8 +44,10 @@ function TradeFloorsInner() {
       <div className="mb-6">
         <h1 className="text-3xl font-semibold">Trade floors</h1>
         <p className="mt-1 text-sm text-ink-400">
-          Race your friends on the same daily questions. Public floors and
-          private floors above 15 members go through admin approval.
+          Real-time virtual trading competitions. Pick a window, virtual
+          capital and stock universe — race friends on live P&amp;L. Public
+          floors and private floors above 15 members go through admin
+          approval.
         </p>
       </div>
 
@@ -57,10 +59,10 @@ function TradeFloorsInner() {
           <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
             Launch
           </div>
-          <h3 className="mt-1 text-xl font-semibold">Launch a trade floor</h3>
+          <h3 className="mt-1 text-xl font-semibold">Launch a trading competition</h3>
           <p className="mt-2 text-sm text-ink-300">
-            Pick a privacy mode, schedule, virtual capital, stock universe and
-            launch — private floors up to 15 members go live instantly.
+            Pick a privacy mode, schedule, virtual capital and stock universe
+            — private floors up to 15 members go live instantly.
           </p>
           <div className="mt-4 text-sm text-brand-300 group-hover:underline">
             Open launcher →

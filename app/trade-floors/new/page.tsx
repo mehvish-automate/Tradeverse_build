@@ -125,10 +125,11 @@ function Inner() {
           ← Trade floors
         </Link>
       </div>
-      <h1 className="text-3xl font-semibold">Launch a trade floor</h1>
+      <h1 className="text-3xl font-semibold">Launch a trading competition</h1>
       <p className="mt-2 text-sm text-ink-400">
-        Private floors up to 15 members go live instantly. Public floors and
-        private floors above 15 members are reviewed by an admin first.
+        Real-time virtual trading on paper money. Private floors up to 15
+        members go live instantly; public floors and private floors above
+        15 members are reviewed by an admin first.
       </p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-6">

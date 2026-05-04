@@ -27,8 +27,9 @@ function Inner() {
         <h1 className="mt-1 text-3xl font-semibold">Where you compete</h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-400">
           Three competitive surfaces. Allocate sectors on a real market event
-          and watch it resolve, jump into a quiz a student club is hosting, or
-          race your friends on the weekly trade floor.
+          and watch it resolve, jump into a quiz a student club is hosting,
+          or run a real-time virtual trading competition with friends on the
+          trade floor.
         </p>
       </div>
 
@@ -48,9 +49,9 @@ function Inner() {
         />
         <HubCard
           href="/trade-floors"
-          eyebrow="Friends"
+          eyebrow="Virtual trading"
           title="Trade floors"
-          body="3–20 friends, weekly cycle. Same daily questions, ranked by accuracy + speed."
+          body="Real-time virtual trading competitions. Pick a window, capital and stock universe — race friends on live P&L."
         />
       </div>
     </>
