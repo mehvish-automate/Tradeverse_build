@@ -77,18 +77,53 @@ export const STOCKS: Stock[] = [
   { symbol: "NIFTYIT",      name: "Nifty IT index",                    sector: "IT",       basePrice:36000, drift: 10, vol: 1.5, assetClass: "index" },
   { symbol: "NIFTYAUTO",    name: "Nifty Auto index",                  sector: "Auto",     basePrice:23500, drift: 11, vol: 1.6, assetClass: "index" },
   { symbol: "NIFTYPHARMA",  name: "Nifty Pharma index",                sector: "Pharma",   basePrice:17800, drift:  8, vol: 1.3, assetClass: "index" },
+  // --- US (Phase 6 multi-region V0.1) ---
+  { symbol: "AAPL",         name: "Apple",                    sector: "IT",       basePrice:  185, drift: 12, vol: 1.4, marketRegion: "US" },
+  { symbol: "MSFT",         name: "Microsoft",                sector: "IT",       basePrice:  410, drift: 13, vol: 1.3, marketRegion: "US" },
+  { symbol: "GOOGL",        name: "Alphabet",                 sector: "IT",       basePrice:  165, drift: 11, vol: 1.5, marketRegion: "US" },
+  { symbol: "AMZN",         name: "Amazon",                   sector: "Consumer", basePrice:  185, drift: 12, vol: 1.6, marketRegion: "US" },
+  { symbol: "NVDA",         name: "NVIDIA",                   sector: "IT",       basePrice:  920, drift: 25, vol: 2.4, marketRegion: "US" },
+  { symbol: "META",         name: "Meta Platforms",           sector: "IT",       basePrice:  490, drift: 14, vol: 1.8, marketRegion: "US" },
+  { symbol: "TSLA",         name: "Tesla",                    sector: "Auto",     basePrice:  175, drift: 10, vol: 3.0, marketRegion: "US" },
+  { symbol: "JPM",          name: "JPMorgan Chase",           sector: "Banking",  basePrice:  205, drift:  8, vol: 1.3, marketRegion: "US" },
+  { symbol: "V",            name: "Visa",                     sector: "Banking",  basePrice:  275, drift:  9, vol: 1.2, marketRegion: "US" },
+  { symbol: "JNJ",          name: "Johnson & Johnson",        sector: "Pharma",   basePrice:  155, drift:  6, vol: 1.0, marketRegion: "US" },
+  { symbol: "WMT",          name: "Walmart",                  sector: "Consumer", basePrice:   78, drift:  9, vol: 1.0, marketRegion: "US" },
+  { symbol: "PG",           name: "Procter & Gamble",         sector: "FMCG",     basePrice:  165, drift:  6, vol: 0.9, marketRegion: "US" },
+  { symbol: "XOM",          name: "Exxon Mobil",              sector: "Energy",   basePrice:  118, drift:  7, vol: 1.4, marketRegion: "US" },
+  { symbol: "UNH",          name: "UnitedHealth",             sector: "Pharma",   basePrice:  525, drift:  9, vol: 1.3, marketRegion: "US" },
+  // US ETFs / indices
+  { symbol: "SPY",          name: "SPDR S&P 500",             sector: "Infra",    basePrice:  525, drift:  9, vol: 1.0, assetClass: "etf",   marketRegion: "US" },
+  { symbol: "QQQ",          name: "Invesco QQQ (Nasdaq 100)", sector: "IT",       basePrice:  450, drift: 11, vol: 1.3, assetClass: "etf",   marketRegion: "US" },
+  { symbol: "VOO",          name: "Vanguard S&P 500",         sector: "Infra",    basePrice:  475, drift:  9, vol: 1.0, assetClass: "etf",   marketRegion: "US" },
+  { symbol: "DIA",          name: "SPDR Dow Jones",           sector: "Infra",    basePrice:  395, drift:  7, vol: 0.9, assetClass: "etf",   marketRegion: "US" },
+  { symbol: "SP500",        name: "S&P 500 index",            sector: "Infra",    basePrice: 5300, drift:  9, vol: 1.0, assetClass: "index", marketRegion: "US" },
+  { symbol: "NDX",          name: "Nasdaq 100 index",         sector: "IT",       basePrice:18800, drift: 11, vol: 1.3, assetClass: "index", marketRegion: "US" },
+  // --- UAE ---
+  { symbol: "EMAAR",        name: "Emaar Properties",         sector: "Infra",    basePrice:    8, drift:  9, vol: 1.4, marketRegion: "UAE" },
+  { symbol: "FAB",          name: "First Abu Dhabi Bank",     sector: "Banking",  basePrice:   13, drift:  7, vol: 1.2, marketRegion: "UAE" },
+  { symbol: "ADCB",         name: "Abu Dhabi Commercial Bank",sector: "Banking",  basePrice:    9, drift:  6, vol: 1.3, marketRegion: "UAE" },
+  { symbol: "DIB",          name: "Dubai Islamic Bank",       sector: "Banking",  basePrice:    6, drift:  6, vol: 1.4, marketRegion: "UAE" },
+  { symbol: "EMIRATESNBD",  name: "Emirates NBD",             sector: "Banking",  basePrice:   17, drift:  8, vol: 1.3, marketRegion: "UAE" },
+  { symbol: "ETISALAT",     name: "Etisalat (e&)",            sector: "Telecom",  basePrice:   23, drift:  6, vol: 1.0, marketRegion: "UAE" },
+  { symbol: "ADNOCDIST",    name: "ADNOC Distribution",       sector: "Energy",   basePrice:    4, drift:  8, vol: 1.5, marketRegion: "UAE" },
+  { symbol: "DEWA",         name: "DEWA",                     sector: "Energy",   basePrice:    2, drift:  7, vol: 1.2, marketRegion: "UAE" },
+  { symbol: "ADX",          name: "FTSE ADX General index",   sector: "Infra",    basePrice: 9400, drift:  8, vol: 1.1, assetClass: "index", marketRegion: "UAE" },
+  { symbol: "DFMGI",        name: "Dubai Financial Market index", sector:"Infra", basePrice: 4200, drift:  7, vol: 1.2, assetClass: "index", marketRegion: "UAE" },
 ];
 
-// Mark stock-typed entries as Nifty 50 + Nifty 100 members and stamp
-// the default market region. The V1 catalog is small enough that every
-// stock-typed row is treated as both Nifty 50 and Nifty 100 — refine
-// when the catalog grows beyond 50 names.
+// Stamp the default market region (legacy India entries don't carry it
+// explicitly), then mark Indian stock-typed rows as Nifty 50 / Nifty
+// 100 members. The Indian catalog is small enough that every stock-
+// typed Indian row is treated as both Nifty 50 and Nifty 100 — refine
+// when it grows beyond 50 names. Non-India regions don't get the
+// nifty flags (those filters are India-specific).
 for (const s of STOCKS) {
-  if ((s.assetClass ?? "stock") === "stock") {
+  s.marketRegion = s.marketRegion ?? "IN";
+  if (s.marketRegion === "IN" && (s.assetClass ?? "stock") === "stock") {
     s.nifty50 = true;
     s.nifty100 = true;
   }
-  s.marketRegion = s.marketRegion ?? "IN";
 }
 
 export const ASSET_CLASSES: AssetClass[] = ["stock", "etf", "index"];
