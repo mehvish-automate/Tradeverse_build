@@ -1,15 +1,24 @@
 "use client";
 
-// Global leaderboards. In the absence of a shared backend each
-// browser can only see its own user's real XP — so we mix the
-// signed-in user's real totals with a deterministic seeded peer set
-// so the boards feel populated. Backend swap-in later.
+// Leaderboards. Three player scopes (Phase 47):
+//   - Global   — all of TradeVerse. Viewer's real lifetime XP, peers seeded.
+//   - Friends  — people in clubs + trade floors I'm a member of. Real cross-
+//                user XP for the current week, pulled via pullScoresFor.
+//   - Private  — list of my private trade-floor competitions, with my P&L
+//                rank inside each. Click-through to the floor leaderboard.
 //
-// Invariant: ranks are purely skill / activity based — no capital,
-// no cash, no pay-to-rank.
+// Invariant: ranks are purely skill / activity / paper-P&L based — no
+// real money, no pay-to-rank.
 
-import { Club, INSTITUTES, Institute, listClubs } from "./clubs";
+import { myClubs, Club, INSTITUTES, Institute, listClubs } from "./clubs";
 import { getProgress } from "./progress";
+import { competitionLeaderboard } from "./competitions";
+import {
+  TradeFloor,
+  currentWeekStart,
+  getMyTradeFloors,
+} from "./tradeFloors";
+import { lookupScore } from "./supabase/scores-sync";
 
 export type PlayerRow = {
   handle: string;
@@ -146,4 +155,120 @@ export function topInstitutes(): InstituteRow[] {
 
 export function institutesWithNone(): Institute[] {
   return INSTITUTES;
+}
+
+// --- Phase 47: Friends + Private scopes ---
+
+export type FriendRow = {
+  email: string;
+  handle: string;
+  xp: number;
+  plays: number;
+  correct: number;
+  isYou: boolean;
+  /** True if cloud score wasn't found and this row reflects local data only. */
+  unresolved?: boolean;
+};
+
+/** Union of every email I share a club or trade floor with. */
+export function friendEmails(
+  viewerEmail: string,
+): { email: string; displayName: string }[] {
+  const map = new Map<string, string>();
+  for (const c of myClubs(viewerEmail)) {
+    for (const m of c.members) map.set(m.email, m.displayName);
+  }
+  for (const f of getMyTradeFloors(viewerEmail)) {
+    for (const m of f.members) map.set(m.email, m.displayName);
+  }
+  return [...map.entries()].map(([email, displayName]) => ({
+    email,
+    displayName,
+  }));
+}
+
+/**
+ * Friends leaderboard for the current week. Viewer's row reads local
+ * progress; peers come from the score cache populated by pullScoresFor().
+ * Peers we don't have a cloud score for are still listed (xp=0,
+ * unresolved=true) so they aren't silently invisible.
+ */
+export function topFriends(
+  viewerEmail: string,
+  viewerDisplayName: string,
+  now = new Date(),
+): FriendRow[] {
+  const since = currentWeekStart(now);
+  const until = now.toISOString().slice(0, 10);
+  const wsMs = new Date(since).getTime();
+  const weMs = new Date(until).getTime() + 24 * 60 * 60 * 1000 - 1;
+
+  const rows: FriendRow[] = [];
+  const seen = new Set<string>();
+
+  // Seed the viewer first (always show even without friends).
+  const p = getProgress(viewerEmail);
+  const myWeek = p.history.filter((h) => {
+    const t = new Date(h.dateKey).getTime();
+    return t >= wsMs && t <= weMs;
+  });
+  rows.push({
+    email: viewerEmail,
+    handle: `@${viewerDisplayName}`,
+    xp: myWeek.reduce((s, h) => s + h.xp, 0),
+    plays: myWeek.length,
+    correct: myWeek.reduce((s, h) => s + h.correct, 0),
+    isYou: true,
+  });
+  seen.add(viewerEmail);
+
+  for (const { email, displayName } of friendEmails(viewerEmail)) {
+    if (seen.has(email)) continue;
+    seen.add(email);
+    const cloud = lookupScore(email, since, until);
+    rows.push({
+      email,
+      handle: `@${displayName}`,
+      xp: cloud?.xp ?? 0,
+      plays: cloud?.plays ?? 0,
+      correct: cloud?.correct ?? 0,
+      isYou: false,
+      unresolved: !cloud,
+    });
+  }
+
+  rows.sort((a, b) => b.xp - a.xp);
+  return rows;
+}
+
+export type PrivateFloorEntry = {
+  floor: TradeFloor;
+  myRank: number; // 1-indexed
+  totalMembers: number;
+  myPnl: number;
+  myPnlPct: number;
+};
+
+/**
+ * One row per private trade-floor competition I'm a member of.
+ * Each entry carries my current P&L rank inside that competition so
+ * the user can scan all their private races at a glance, then drill
+ * into one for the full leaderboard.
+ */
+export function myPrivateFloors(viewerEmail: string): PrivateFloorEntry[] {
+  const mine = getMyTradeFloors(viewerEmail).filter(
+    (f) => f.privacy === "private",
+  );
+  return mine.map((f) => {
+    const rows = competitionLeaderboard(f, viewerEmail);
+    const myIdx = rows.findIndex((r) => r.isYou);
+    const me = myIdx >= 0 ? rows[myIdx] : null;
+    return {
+      floor: f,
+      myRank: myIdx + 1,
+      totalMembers: rows.length,
+      myPnl: me?.pnl ?? 0,
+      myPnlPct: me?.pnlPct ?? 0,
+    };
+  });
 }
