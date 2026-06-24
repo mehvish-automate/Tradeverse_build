@@ -131,11 +131,27 @@ export async function sendPasswordReset(
     (typeof window !== "undefined" ? window.location.origin : "") +
     "/auth/callback?next=/auth/reset-password&type=recovery";
 
-  const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-    redirectTo,
-  });
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
+      redirectTo,
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (e) {
+    // Network-level failure (TypeError: Failed to fetch). Usually means
+    // the Supabase project is paused / unreachable, an ad-blocker is
+    // intercepting the request, or env vars are wrong.
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+      return {
+        ok: false,
+        error:
+          "Couldn't reach the auth server. Check your connection and try again — if it keeps happening, the Supabase project may be paused.",
+      };
+    }
+    return { ok: false, error: msg };
+  }
+}
 }
 
 /** Returns the current Supabase session's user, or null. */
