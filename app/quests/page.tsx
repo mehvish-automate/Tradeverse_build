@@ -121,7 +121,25 @@ function QuestsInner() {
         );
       })}
 
-      <div className="mt-10">
+      <div className="mt-10 rounded-2xl border border-brand-500/40 bg-brand-500/5 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
+              Looking for quizzes?
+            </div>
+            <p className="mt-1 text-sm text-ink-200">
+              Multi-day quiz events you host or join via invite code live
+              under <strong>Floors → Quizzes</strong> (not here — this page
+              is your daily XP quest list).
+            </p>
+          </div>
+          <Link href="/quizzes" className="btn-primary shrink-0">
+            Open quizzes →
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-6">
         <Link
           href="/learn"
           className="rounded-lg border border-ink-700 px-4 py-2 text-sm text-ink-100 hover:bg-ink-900"
