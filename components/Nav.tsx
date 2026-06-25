@@ -24,7 +24,7 @@ const APP_LINKS: NavLink[] = [
   {
     href: "/floors",
     label: "Floors",
-    matches: ["/events", "/trade-floors", "/fests"],
+    matches: ["/events", "/trade-floors", "/fests", "/quizzes"],
   },
   {
     href: "/social",

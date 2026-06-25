@@ -41,7 +41,8 @@ export type FestLifecycleStatus =
 
 export type Fest = {
   id: string; // 6-char invite code (A–Z, 2–9)
-  clubId: string;
+  /** Null = standalone quiz (not tied to a club). */
+  clubId: string | null;
   name: string;
   description?: string;
   startDate: string; // yyyy-mm-dd
@@ -57,6 +58,8 @@ export type Fest = {
   privacy?: FestPrivacy;
   lifecycleStatus?: FestLifecycleStatus;
   categories?: string[];
+  /** Quiz-launch cap. Default 50. Approval if private && cap > 100. */
+  memberCap?: number;
   /** Optional time-of-day precision (ms epoch). Fall back to startDate. */
   startsAtMs?: number;
   endsAtMs?: number;
@@ -68,13 +71,22 @@ function withFestDefaults(f: Fest): Fest {
     privacy: "private",
     lifecycleStatus: "live",
     categories: [],
+    memberCap: 50,
     ...f,
   };
 }
 
-/** Public fests need admin approval; private fests go live instantly. */
-export function festNeedsAdminApproval(privacy: FestPrivacy): boolean {
-  return privacy === "public";
+/**
+ * Public fests are always reviewed. Private fests are reviewed when
+ * the cap exceeds 100 (quiz launch threshold from the spec board).
+ */
+export function festNeedsAdminApproval(input: {
+  privacy: FestPrivacy;
+  memberCap?: number;
+}): boolean {
+  if (input.privacy === "public") return true;
+  if ((input.memberCap ?? 0) > 100) return true;
+  return false;
 }
 
 export const FEST_EVENT_TYPES: { id: FestEventType; label: string; blurb: string }[] = [
@@ -150,7 +162,8 @@ export function myFests(email: string): Fest[] {
 }
 
 export function createFest(input: {
-  clubId: string;
+  /** Null for standalone quizzes (any authed user can launch). */
+  clubId: string | null;
   name: string;
   description?: string;
   startDate: string;
@@ -165,19 +178,29 @@ export function createFest(input: {
   categories?: string[];
   startsAtMs?: number;
   endsAtMs?: number;
+  // Quiz-launch field
+  memberCap?: number;
 }): { ok: true; fest: Fest; needsApproval: boolean } | { ok: false; error: string } {
-  const club = getClub(input.clubId);
-  if (!club) return { ok: false, error: "Club not found." };
-
-  const isOwner = club.members.some(
-    (m) => m.email === input.creator.email && m.role === "owner",
-  );
-  if (!isOwner)
-    return { ok: false, error: "Only the club owner can host a fest." };
+  // Club-bound flow: must be an owner. Standalone flow (clubId=null):
+  // any authed user can launch — the approval gate handles abuse.
+  if (input.clubId !== null) {
+    const club = getClub(input.clubId);
+    if (!club) return { ok: false, error: "Club not found." };
+    const isOwner = club.members.some(
+      (m) => m.email === input.creator.email && m.role === "owner",
+    );
+    if (!isOwner)
+      return { ok: false, error: "Only the club owner can host a fest." };
+  }
 
   const name = input.name.trim();
   if (name.length < 3) return { ok: false, error: "Name too short (min 3)." };
   if (name.length > 60) return { ok: false, error: "Name too long (max 60)." };
+
+  const memberCap = input.memberCap ?? 50;
+  if (memberCap < 2 || memberCap > 1000) {
+    return { ok: false, error: "Member cap must be between 2 and 1000." };
+  }
 
   const s = new Date(input.startDate);
   const e = new Date(input.endDate);
@@ -213,7 +236,7 @@ export function createFest(input: {
     .map((c) => c.trim())
     .filter(Boolean)
     .slice(0, 12);
-  const needsApproval = festNeedsAdminApproval(privacy);
+  const needsApproval = festNeedsAdminApproval({ privacy, memberCap });
   const lifecycleStatus: FestLifecycleStatus = needsApproval
     ? "pending_approval"
     : "live";
@@ -221,6 +244,7 @@ export function createFest(input: {
   const fest: Fest = {
     id,
     clubId: input.clubId,
+    memberCap,
     name,
     description: input.description?.trim() || undefined,
     startDate: input.startDate,
@@ -274,6 +298,10 @@ export function joinFest(
     return { ok: false, error: "This fest was rejected." };
   if (fest.participants.some((p) => p.email === user.email)) {
     return { ok: true, fest };
+  }
+  const cap = fest.memberCap ?? 50;
+  if (fest.participants.length >= cap) {
+    return { ok: false, error: `This fest is full (${cap} participants).` };
   }
   fest.participants.push({
     email: user.email,

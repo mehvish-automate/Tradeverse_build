@@ -42,10 +42,10 @@ function Inner() {
           body="Budget week, IT earnings, festive auto. Pick a sector allocation, resolve, see your alpha."
         />
         <HubCard
-          href="/marketplace"
+          href="/quizzes"
           eyebrow="Quizzes"
-          title="Student-built fests"
-          body="Multi-day club tournaments, custom quizzes, hackathons. Browse what's running and join with a code."
+          title="Launch or join a quiz"
+          body="Multi-day quiz events. Use our question bank or upload custom Qs. Private up to 100 goes live instantly; public + larger go through admin review."
         />
         <HubCard
           href="/trade-floors"

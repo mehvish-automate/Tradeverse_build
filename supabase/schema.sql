@@ -148,6 +148,15 @@ alter table public.fests
   add column if not exists starts_at timestamptz,
   add column if not exists ends_at timestamptz;
 
+-- Quiz launch flow — fests can now be launched standalone (not tied to
+-- a club) and carry an explicit participant cap. Threshold of 100 is
+-- the new admin-approval trigger for private fests; public fests are
+-- still always reviewed.
+alter table public.fests alter column club_id drop not null;
+alter table public.fests
+  add column if not exists member_cap integer not null default 50
+    check (member_cap between 2 and 1000);
+
 create table if not exists public.fest_participants (
   fest_id    text not null references public.fests on delete cascade,
   user_id    uuid not null references auth.users on delete cascade,
@@ -563,15 +572,20 @@ create policy "self leave club"
 -- fests
 create policy "fests public read"
   on public.fests for select to authenticated using (true);
+-- Insert allowed either when the user owns the club this fest is under,
+-- OR when it's a standalone (club_id null) fest the user is creating
+-- for themselves. The latter is the "quiz self-launch" path — any
+-- authed user can host a quiz; admin approval gates the public ones.
 create policy "fests owner creates"
   on public.fests for insert to authenticated
   with check (
-    exists (
+    (club_id is not null and exists (
       select 1 from public.club_members m
       where m.club_id = fests.club_id
         and m.user_id = auth.uid()
         and m.role = 'owner'
-    )
+    ))
+    or (club_id is null and created_by = auth.uid())
   );
 
 -- Admins can update fest status (approve / reject pending public fests).

@@ -24,7 +24,8 @@ export async function mirrorFest(fest: Fest): Promise<boolean> {
 
   const festRow = {
     id: fest.id,
-    club_id: fest.clubId,
+    // Quiz-launch: null when not tied to a club (standalone launch).
+    club_id: fest.clubId ?? null,
     name: fest.name,
     description: fest.description ?? null,
     start_date: fest.startDate,
@@ -42,6 +43,7 @@ export async function mirrorFest(fest: Fest): Promise<boolean> {
       ? new Date(fest.startsAtMs).toISOString()
       : null,
     ends_at: fest.endsAtMs ? new Date(fest.endsAtMs).toISOString() : null,
+    member_cap: fest.memberCap ?? 50,
   };
   const { error: festErr } = await (supabase.from("fests") as unknown as {
     upsert: (
@@ -109,7 +111,7 @@ export async function pullMyFests(): Promise<number> {
   // 2. Fest rows.
   type FestRow = {
     id: string;
-    club_id: string;
+    club_id: string | null;
     name: string;
     description: string | null;
     start_date: string;
@@ -124,6 +126,7 @@ export async function pullMyFests(): Promise<number> {
     categories: string[] | null;
     starts_at: string | null;
     ends_at: string | null;
+    member_cap: number | null;
   };
   const festsRes = await (supabase.from("fests") as unknown as {
     select: (cols: string) => {
@@ -134,7 +137,7 @@ export async function pullMyFests(): Promise<number> {
     };
   })
     .select(
-      "id, club_id, name, description, start_date, end_date, event_type, difficulty, source, created_by, created_at, privacy, status, categories, starts_at, ends_at",
+      "id, club_id, name, description, start_date, end_date, event_type, difficulty, source, created_by, created_at, privacy, status, categories, starts_at, ends_at, member_cap",
     )
     .in("id", festIds);
   if (festsRes.error || !festsRes.data) return 0;
@@ -205,6 +208,7 @@ export async function pullMyFests(): Promise<number> {
       categories: f.categories ?? [],
       startsAtMs: f.starts_at ? new Date(f.starts_at).getTime() : undefined,
       endsAtMs: f.ends_at ? new Date(f.ends_at).getTime() : undefined,
+      memberCap: f.member_cap ?? 50,
     };
   });
 

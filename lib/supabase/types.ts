@@ -178,7 +178,7 @@ export interface Database {
       fests: {
         Row: {
           id: string;
-          club_id: string;
+          club_id: string | null;
           name: string;
           description: string | null;
           start_date: string;
@@ -193,10 +193,11 @@ export interface Database {
           categories: string[];
           starts_at: string | null;
           ends_at: string | null;
+          member_cap: number;
         };
         Insert: {
           id?: string;
-          club_id: string;
+          club_id?: string | null;
           name: string;
           description?: string | null;
           start_date: string;
@@ -211,6 +212,7 @@ export interface Database {
           categories?: string[];
           starts_at?: string | null;
           ends_at?: string | null;
+          member_cap?: number;
         };
         Update: Partial<Database["public"]["Tables"]["fests"]["Insert"]>;
       };
