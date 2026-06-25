@@ -152,7 +152,6 @@ export async function sendPasswordReset(
     return { ok: false, error: msg };
   }
 }
-}
 
 /** Returns the current Supabase session's user, or null. */
 export async function supabaseUser() {
