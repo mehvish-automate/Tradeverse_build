@@ -126,7 +126,7 @@ export const BADGES: Badge[] = [
     id: "b-tradefloor-joined",
     title: "In the arena",
     icon: "🤝",
-    description: "Create or join your first trade floor.",
+    description: "Create or join your first Quiz Floor.",
     tier: "bronze",
     earned: ({ tradeFloorsCount }) => tradeFloorsCount >= 1,
   },

@@ -118,13 +118,13 @@ function ReferralsInner() {
             </h2>
             <p className="mt-1 text-xs text-ink-500">
               Clicks vs registrations on the tracked links you&apos;ve shared
-              for trade floors, fests and market events.
+              for Quiz Floors, fests and market events.
             </p>
           </div>
         </div>
         {shareStats.length === 0 ? (
           <div className="rounded-xl border border-ink-700 bg-ink-900/40 p-6 text-sm text-ink-400">
-            No tracked links yet. Open any trade floor, fest or market event,
+            No tracked links yet. Open any Quiz Floor, fest or market event,
             tap the share button, and the funnel will show up here.
           </div>
         ) : (

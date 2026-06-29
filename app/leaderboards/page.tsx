@@ -174,7 +174,7 @@ function ScopeChips({
 }) {
   const opts: { id: PlayerScope; label: string; sub: string }[] = [
     { id: "global", label: "Global", sub: "Everyone on TradeVerse" },
-    { id: "friends", label: "Friends", sub: "Clubs + trade floors you're in" },
+    { id: "friends", label: "Friends", sub: "Clubs + Quiz Floors you're in" },
     { id: "private", label: "Private", sub: "Your private competitions" },
   ];
   return (
@@ -298,15 +298,15 @@ function FriendsBoard({
       <section className="rounded-2xl border border-ink-700 bg-ink-900/40 p-6">
         <h2 className="text-lg font-semibold">No friends here yet</h2>
         <p className="mt-2 text-sm text-ink-400">
-          Join a club or a trade floor to populate this board with people you
+          Join a club or a Quiz Floor to populate this board with people you
           know. Their week-of-{currentWeekStart()} XP shows up here.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/clubs" className="btn-ghost">
             Browse clubs
           </Link>
-          <Link href="/trade-floors" className="btn-ghost">
-            Open trade floors
+          <Link href="/quizzes" className="btn-ghost">
+            Open Quiz Floor
           </Link>
         </div>
       </section>
@@ -380,15 +380,15 @@ function PrivateList({ rows }: { rows: PrivateFloorEntry[] }) {
       <section className="rounded-2xl border border-ink-700 bg-ink-900/40 p-6">
         <h2 className="text-lg font-semibold">No private competitions yet</h2>
         <p className="mt-2 text-sm text-ink-400">
-          Launch a private trade floor or join one with an invite code, and
+          Launch a private Quiz Floor or join one with an invite code, and
           your live P&amp;L rank inside each will show up here.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link href="/trade-floors/new" className="btn-primary">
+          <Link href="/quizzes" className="btn-primary">
             Launch a competition
           </Link>
-          <Link href="/trade-floors" className="btn-ghost">
-            All trade floors
+          <Link href="/quizzes" className="btn-ghost">
+            All Quiz Floors
           </Link>
         </div>
       </section>

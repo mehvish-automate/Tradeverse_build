@@ -125,16 +125,16 @@ function QuestsInner() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
-              Looking for quizzes?
+              Looking for the Quiz Floor?
             </div>
             <p className="mt-1 text-sm text-ink-200">
-              Multi-day quiz events you host or join via invite code live
-              under <strong>Floors → Quizzes</strong> (not here — this page
+              Multi-day quiz competitions you host or join via invite code live
+              under <strong>Floors → Quiz Floor</strong> (not here — this page
               is your daily XP quest list).
             </p>
           </div>
           <Link href="/quizzes" className="btn-primary shrink-0">
-            Open quizzes →
+            Open Quiz Floor →
           </Link>
         </div>
       </div>

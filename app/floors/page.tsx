@@ -26,14 +26,13 @@ function Inner() {
         </div>
         <h1 className="mt-1 text-3xl font-semibold">Where you compete</h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-400">
-          Three competitive surfaces. Allocate sectors on a real market event
-          and watch it resolve, jump into a quiz a student club is hosting,
-          or run a real-time virtual trading competition with friends on the
-          trade floor.
+          Two competitive surfaces. Allocate sectors on a real market event and
+          watch it resolve, or launch a multi-day Quiz Floor your club hosts and
+          race friends on the leaderboard.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <HubCard
           href="/events"
           accent="brand"
@@ -43,15 +42,9 @@ function Inner() {
         />
         <HubCard
           href="/quizzes"
-          eyebrow="Quizzes"
-          title="Launch or join a quiz"
-          body="Multi-day quiz events. Use our question bank or upload custom Qs. Private up to 100 goes live instantly; public + larger go through admin review."
-        />
-        <HubCard
-          href="/trade-floors"
-          eyebrow="Virtual trading"
-          title="Trade floors"
-          body="Real-time virtual trading competitions. Pick a window, capital and stock universe — race friends on live P&L."
+          eyebrow="Quiz Floor"
+          title="Launch or join a Quiz Floor"
+          body="Multi-day quiz competitions. Use our question bank or upload custom Qs. Private up to 100 goes live instantly; public + larger go through admin review."
         />
       </div>
     </>

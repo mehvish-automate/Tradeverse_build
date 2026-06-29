@@ -21,7 +21,7 @@ import {
 import { EVENTS, isResolved } from "@/lib/events";
 import { myAllocation } from "@/lib/eventPortfolios";
 import { getHomeInstitute } from "@/lib/onboarding";
-import { getMyTradeFloors } from "@/lib/tradeFloors";
+import { myFests } from "@/lib/fests";
 import { getProgress } from "@/lib/progress";
 import { viewQuests } from "@/lib/quests";
 import { ageFromDob, useSession } from "@/lib/session";
@@ -46,7 +46,7 @@ function ProfileInner() {
     streak: 0,
     totalXp: 0,
     plays: 0,
-    tradeFloors: 0,
+    quizFloors: 0,
     learnPct: 0,
     learnDone: 0,
     learnTotal: 0,
@@ -66,7 +66,7 @@ function ProfileInner() {
   useEffect(() => {
     if (!user) return;
     const p = getProgress(user.email);
-    const ls = getMyTradeFloors(user.email);
+    const quizFloors = myFests(user.email).filter((f) => f.eventType === "quiz");
     const learn = overallCompletion(user.email);
     const nxt = nextLesson(user.email);
     const nxtLesson = nxt
@@ -87,7 +87,7 @@ function ProfileInner() {
       streak: p.streak,
       totalXp: p.totalXp,
       plays: p.history.length,
-      tradeFloors: ls.length,
+      quizFloors: quizFloors.length,
       learnPct: learn.pct,
       learnDone: learn.done,
       learnTotal: learn.total,
@@ -163,9 +163,9 @@ function ProfileInner() {
           hint="Earn by answering correctly + fast"
         />
         <Stat
-          label="Trade Floors"
-          value={`${progress.tradeFloors}`}
-          hint={progress.tradeFloors === 0 ? "Create or join one" : "View your trade floors →"}
+          label="Quiz Floors"
+          value={`${progress.quizFloors}`}
+          hint={progress.quizFloors === 0 ? "Host or join one" : "Hosted or joined"}
         />
       </div>
 
@@ -262,16 +262,16 @@ function ProfileInner() {
         </Link>
 
         <Link
-          href="/trade-floors"
+          href="/quizzes"
           className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
         >
           <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
             Compete
           </div>
-          <div className="mt-1 text-xl font-semibold">Trade floors</div>
+          <div className="mt-1 text-xl font-semibold">Quiz Floor</div>
           <p className="mt-2 text-sm text-ink-300">
-            Real-time virtual trading competitions. Friends, capital, window —
-            ranked by live P&amp;L. Zero real money.
+            Multi-day quiz events on markets &amp; finance. Host or join by
+            invite code — ranked by score on the live leaderboard.
           </p>
           <div className="mt-4 text-sm text-ink-300 group-hover:text-ink-50">
             Open →
@@ -297,18 +297,18 @@ function ProfileInner() {
 
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Link
-          href="/portfolios"
-          className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
+          href="/strategy"
+          className="group rounded-2xl border border-brand-500/40 bg-gradient-to-br from-brand-500/10 to-transparent p-6 hover:border-brand-500"
         >
-          <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
-            Portfolios
+          <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
+            Strategy Builder
           </div>
-          <div className="mt-1 text-xl font-semibold">Virtual portfolios</div>
+          <div className="mt-1 text-xl font-semibold">Build, hold, watch</div>
           <p className="mt-2 text-sm text-ink-300">
-            Build a paper ₹1L allocation. See it move against NIFTY. Zero
-            real money.
+            Paper trading, virtual portfolios, multi-chart and your watchlist —
+            all in one place. Zero real money.
           </p>
-          <div className="mt-4 text-sm text-ink-300 group-hover:text-ink-50">Open →</div>
+          <div className="mt-4 text-sm text-brand-300 group-hover:underline">Open →</div>
         </Link>
 
         <Link
@@ -324,44 +324,6 @@ function ProfileInner() {
             resolve and see how you ranked.
           </p>
           <div className="mt-4 text-sm text-ink-300 group-hover:text-ink-50">Open →</div>
-        </Link>
-
-        <Link
-          href="/watchlist"
-          className="group rounded-2xl border border-ink-700 bg-ink-900/40 p-6 hover:border-ink-500"
-        >
-          <div className="text-xs font-medium uppercase tracking-wider text-ink-400">
-            Watchlist
-          </div>
-          <div className="mt-1 text-xl font-semibold">Stocks you follow</div>
-          <p className="mt-2 text-sm text-ink-300">
-            Pick names to track. RSI alerts land in your inbox when they
-            cross 70 or 30.
-          </p>
-          <div className="mt-4 text-sm text-ink-300 group-hover:text-ink-50">Open →</div>
-        </Link>
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-4">
-        <Link
-          href="/trade"
-          className="group rounded-2xl border border-brand-500/40 bg-gradient-to-br from-brand-500/10 to-transparent p-6 hover:border-brand-500"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
-                Paper trading
-              </div>
-              <div className="mt-1 text-xl font-semibold">
-                Trade ticket & L2 book
-              </div>
-              <p className="mt-2 text-sm text-ink-300">
-                Market, Limit, Stop, Stop-Limit — with slippage, latency and
-                partial fills. Starts with ₹10L paper cash. Zero real money.
-              </p>
-            </div>
-            <span className="text-sm text-brand-300 group-hover:underline">Open →</span>
-          </div>
         </Link>
       </div>
 

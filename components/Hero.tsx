@@ -21,7 +21,7 @@ export function Hero() {
 
           <p className="mt-6 max-w-xl text-pretty text-lg text-ink-300">
             TradeVerse turns live NSE/BSE data into a 5-minute daily chart
-            challenge and a trade floor you play with your group chat. Not a
+            challenge and a Quiz Floor you play with your group chat. Not a
             trading app. Never.
           </p>
 

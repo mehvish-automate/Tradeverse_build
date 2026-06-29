@@ -5,7 +5,7 @@ export function Vision() {
     <Section
       eyebrow="Vision & positioning"
       title="A daily 5-minute skill challenge Gen Z Indians take with their friends."
-      kicker="For first-job Gen Z Indians (22–28) who find the stock market intimidating, TradeVerse is the only markets platform that turns live market data into a daily visual skill challenge and trade floor — no trading, no real money."
+      kicker="For first-job Gen Z Indians (22–28) who find the stock market intimidating, TradeVerse is the only markets platform that turns live market data into a daily visual skill challenge and Quiz Floor — no trading, no real money."
     >
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Pillar
@@ -16,7 +16,7 @@ export function Vision() {
         <Pillar
           eyebrow="Social"
           title="Play with friends"
-          body="Trade floors with weekly cycles. Bragging rights over the group chat."
+          body="Quiz Floors with weekly cycles. Bragging rights over the group chat."
         />
         <Pillar
           eyebrow="Skill"

@@ -83,7 +83,7 @@ function WelcomeInner() {
             </li>
             <li className="flex gap-2">
               <span className="text-brand-300">✓</span>
-              <span>Invite friends into a trade floor — race them weekly.</span>
+              <span>Invite friends into a Quiz Floor — race them weekly.</span>
             </li>
           </ul>
 

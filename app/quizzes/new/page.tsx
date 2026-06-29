@@ -133,10 +133,10 @@ function Inner() {
     <>
       <div className="mb-2 text-xs">
         <Link href="/quizzes" className="text-ink-400 hover:text-ink-100">
-          ← Quizzes
+          ← Quiz Floor
         </Link>
       </div>
-      <h1 className="text-3xl font-semibold">Launch a quiz</h1>
+      <h1 className="text-3xl font-semibold">Launch a Quiz Floor</h1>
       <p className="mt-2 text-sm text-ink-400">
         Private quizzes up to 100 participants go live instantly. Public
         quizzes — and private quizzes above 100 — are reviewed by an admin
@@ -383,7 +383,7 @@ function Inner() {
               ? "Launching…"
               : willNeedApproval
                 ? "Submit for approval"
-                : "Launch quiz"}
+                : "Launch Quiz Floor"}
           </button>
         </div>
       </form>

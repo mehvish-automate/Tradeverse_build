@@ -17,11 +17,6 @@ const APP_LINKS: NavLink[] = [
     matches: ["/play"],
   },
   {
-    href: "/strategy",
-    label: "Strategy Builder",
-    matches: ["/trade", "/portfolios", "/watchlist", "/charts", "/chart"],
-  },
-  {
     href: "/floors",
     label: "Floors",
     matches: ["/events", "/trade-floors", "/fests", "/quizzes"],
@@ -40,7 +35,7 @@ const MARKETING_LINKS: NavLink[] = [
 ];
 
 const SECONDARY_AUTHED_LINKS: NavLink[] = [
-  { href: "/quizzes", label: "Quizzes" },
+  { href: "/quizzes", label: "Quiz Floor" },
   { href: "/alerts", label: "Alerts" },
   { href: "/badges", label: "Badges" },
   { href: "/leaderboards", label: "Leaderboards" },

@@ -179,7 +179,7 @@ function Inner() {
 
       <p className="mt-6 text-xs text-ink-500">
         Android Chrome &amp; Edge: long-press the TradeVerse app icon on your
-        home screen to see Play · Trade floor · Inbox shortcuts. iOS web
+        home screen to see Play · Quiz Floor · Inbox shortcuts. iOS web
         widgets aren&apos;t yet exposed by Safari — this page mirrors what
         we&apos;ll surface when they land.
       </p>

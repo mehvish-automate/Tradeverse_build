@@ -45,10 +45,10 @@ function Inner() {
   return (
     <>
       <div className="mb-6">
-        <h1 className="text-3xl font-semibold">Quizzes</h1>
+        <h1 className="text-3xl font-semibold">Quiz Floor</h1>
         <p className="mt-1 text-sm text-ink-400">
-          Multi-day quiz events on markets, finance, technicals. Private
-          quizzes up to 100 participants go live instantly. Public — and
+          Multi-day quiz competitions on markets, finance, technicals. Private
+          Quiz Floors up to 100 participants go live instantly. Public — and
           private above 100 — go through admin review.
         </p>
       </div>
@@ -61,7 +61,7 @@ function Inner() {
           <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
             Launch
           </div>
-          <h3 className="mt-1 text-xl font-semibold">Launch a quiz</h3>
+          <h3 className="mt-1 text-xl font-semibold">Launch a Quiz Floor</h3>
           <p className="mt-2 text-sm text-ink-300">
             Pick a window, capacity and topic. Use our question bank or
             upload your own — at least one custom Q is required.
@@ -80,12 +80,12 @@ function Inner() {
       </div>
 
       <h2 className="mt-10 text-sm font-medium uppercase tracking-wider text-ink-400">
-        Your quizzes
+        Your Quiz Floors
       </h2>
       {mine.length === 0 ? (
         <p className="mt-3 rounded-xl border border-ink-700 bg-ink-900/40 p-6 text-sm text-ink-400">
-          You haven&apos;t hosted or joined a quiz yet. Launch one above, or
-          paste an invite code a friend sent.
+          You haven&apos;t hosted or joined a Quiz Floor yet. Launch one above,
+          or paste an invite code a friend sent.
         </p>
       ) : (
         <ul className="mt-3 divide-y divide-ink-900 rounded-xl border border-ink-700 bg-ink-900/40">
@@ -207,7 +207,7 @@ function JoinByCode({ onJoined }: { onJoined: (f: Fest) => void }) {
       </label>
       {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
       <button type="submit" className="mt-4 w-full btn-ghost">
-        Join quiz
+        Join Quiz Floor
       </button>
     </form>
   );

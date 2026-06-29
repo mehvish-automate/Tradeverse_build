@@ -203,10 +203,10 @@ function ClubInner() {
 
       <div className="mt-3">
         <Link
-          href="/trade-floors"
+          href="/quizzes"
           className="group inline-flex items-center gap-2 text-sm text-ink-400 hover:text-ink-100"
         >
-          Smaller friend groups? See trade floors →
+          Smaller friend groups? See the Quiz Floor →
         </Link>
       </div>
 

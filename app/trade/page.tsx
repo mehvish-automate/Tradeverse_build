@@ -148,14 +148,14 @@ function Inner() {
       <div className="rounded-xl border border-ink-700 bg-ink-900/40 p-6">
         <h1 className="text-xl font-semibold">Competition not found</h1>
         <p className="mt-2 text-sm text-ink-400">
-          Couldn&apos;t find a trade floor with code {floorParam} on this
+          Couldn&apos;t find a Quiz Floor with code {floorParam} on this
           device. Open it from the Floors list to load it first.
         </p>
         <Link
-          href="/trade-floors"
+          href="/quizzes"
           className="mt-4 inline-block rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-100 hover:bg-ink-900"
         >
-          Open trade floors
+          Open Quiz Floor
         </Link>
       </div>
     );

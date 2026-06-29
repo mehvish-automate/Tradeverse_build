@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: "%s · TradeVerse",
   },
   description:
-    "TradeVerse is a pure skill platform for Indian markets. Daily chart challenges and trade floors. No trading, no real money, no KYC.",
+    "TradeVerse is a pure skill platform for Indian markets. Daily chart challenges and Quiz Floors. No trading, no real money, no KYC.",
   metadataBase: new URL("https://tradeverse.app"),
   manifest: "/manifest.webmanifest",
   applicationName: "TradeVerse",
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     "chart reading",
     "NSE BSE",
     "finance learning India",
-    "trade floor",
+    "quiz floor",
   ],
   openGraph: {
     title: "TradeVerse — Markets as a daily skill challenge",

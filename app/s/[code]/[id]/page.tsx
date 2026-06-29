@@ -92,7 +92,7 @@ function Inner() {
       joinHref = `/trade-floors/${f.id}?via=${refCode}`;
       cta = "Open competition";
     } else {
-      title = `Trade floor ${id}`;
+      title = `Quiz Floor ${id}`;
       subtitle = "We can't preview this floor on this device yet.";
       joinHref = `/trade-floors?code=${id}${refCode ? `&via=${refCode}` : ""}`;
       cta = "Sign in to join";

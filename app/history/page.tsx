@@ -109,7 +109,7 @@ function HistoryInner() {
         <h1 className="text-3xl font-semibold">History</h1>
         <p className="mt-1 text-sm text-ink-400">
           Your personal growth across every surface — daily challenge runs,
-          fests, market events and trade floors. Lifetime numbers up top,
+          fests, market events and Quiz Floors. Lifetime numbers up top,
           windowed view below.
         </p>
       </div>
@@ -166,7 +166,7 @@ function HistoryInner() {
           />
           <WinTile
             emoji="🥇"
-            label="Trade floors won"
+            label="Quiz Floors won"
             value={wins.floorsWon}
             sub="Top P&L on an ended floor"
           />

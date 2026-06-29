@@ -113,7 +113,7 @@ export const QUESTS: Quest[] = [
   {
     id: "w-trade floor",
     window: "weekly",
-    title: "Join or create a trade floor",
+    title: "Join or create a Quiz Floor",
     description: "Race against friends, not alone.",
     rewardXp: 100,
     progress: ({ tradeFloorsCount }) => ({

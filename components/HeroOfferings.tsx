@@ -25,16 +25,16 @@ export function HeroOfferings() {
 
         <OfferingCard
           badge="H2"
-          title="Trade Floors"
-          tagline="Real-time virtual trading competitions with friends. Live P&L. Zero money."
+          title="Quiz Floor"
+          tagline="Multi-day quiz competitions with friends. Live leaderboard. Zero money."
           bullets={[
-            "WhatsApp-native invites — 2 taps from group chat to trade floor",
-            "Pick window, capital, stock universe — public floors go through admin review",
-            "Ranked by live mark-to-market P&L during the competition window",
+            "WhatsApp-native invites — 2 taps from group chat to Quiz Floor",
+            "Pick window, capacity and topic — public floors go through admin review",
+            "Ranked by score across the quiz window — our question bank or your own Qs",
             "India-flavored social loop, zero regulatory exposure",
           ]}
           why="The virality engine."
-          preview={<TradeFloorPreview />}
+          preview={<QuizFloorPreview />}
         />
       </div>
     </Section>
@@ -132,7 +132,7 @@ function ChartPreview() {
   );
 }
 
-function TradeFloorPreview() {
+function QuizFloorPreview() {
   const rows = [
     { name: "you", score: 4820, delta: "+320", me: true },
     { name: "ananya_b", score: 4605, delta: "+280" },
