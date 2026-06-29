@@ -260,7 +260,7 @@ function Results({
         </Link>
         <ShareButton user={user} result={result} />
         <Link
-          href="/trade-floors"
+          href="/quizzes"
           className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-brand-300"
         >
           Compare with friends →

@@ -287,12 +287,21 @@ function FestInner() {
       </section>
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <Link
-          href="/play"
-          className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-ink-950 hover:bg-brand-300"
-        >
-          Play today to earn XP →
-        </Link>
+        {fest.eventType === "quiz" ? (
+          <Link
+            href={`/fests/${fest.id}/play`}
+            className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-ink-950 hover:bg-brand-300"
+          >
+            Play quiz →
+          </Link>
+        ) : (
+          <Link
+            href="/play"
+            className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-ink-950 hover:bg-brand-300"
+          >
+            Play today to earn XP →
+          </Link>
+        )}
         {club && (
           <Link
             href={`/clubs/${club.id}`}
