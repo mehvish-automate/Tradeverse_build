@@ -122,6 +122,15 @@ export function ChallengeRunner({ user }: { user: User }) {
         });
       }
 
+      void import("@/lib/analytics").then(({ EV, track }) =>
+        track(EV.dailyFinish, {
+          correct: totalCorrect,
+          total: questions.length,
+          xp: totalXp,
+          streak: store.streak,
+        }),
+      );
+
       setSummary(result);
       setBonus({
         base: baseXp,

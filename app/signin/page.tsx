@@ -41,6 +41,9 @@ function SigninForm() {
       return;
     }
     registerOwnCode(email.trim().toLowerCase(), email.split("@")[0]);
+    void import("@/lib/analytics").then(({ EV, track }) =>
+      track(EV.signIn, { mode: result.mode }),
+    );
     router.push("/profile");
   }
 

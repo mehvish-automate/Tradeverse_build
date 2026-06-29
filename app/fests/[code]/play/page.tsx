@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { QuizRunner } from "@/components/QuizRunner";
 import { RequireAuth } from "@/components/RequireAuth";
+import { EV, track } from "@/lib/analytics";
 import { Fest, FestQuestion, festStatus, getFest, joinFest } from "@/lib/fests";
 import {
   QUIZ_SECONDS_PER_QUESTION,
@@ -79,6 +80,14 @@ function Inner() {
     (attempt: QuizAttempt) => {
       if (!user) return;
       const { improved } = saveAttempt(user.email, attempt);
+      track(EV.quizFinish, {
+        festId: attempt.festId,
+        score: attempt.score,
+        correct: attempt.correct,
+        total: attempt.total,
+        totalMs: attempt.totalMs,
+        improved,
+      });
       setResult({ attempt, improved });
       setStage("done");
     },
@@ -217,7 +226,14 @@ function Inner() {
           more.
         </p>
         <button
-          onClick={() => setStage("playing")}
+          onClick={() => {
+            track(EV.quizStart, {
+              festId: fest.id,
+              questions: questions.length,
+              status,
+            });
+            setStage("playing");
+          }}
           className="mt-4 rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-semibold text-ink-950 hover:bg-brand-300"
         >
           Start quiz →
@@ -304,6 +320,9 @@ function Results({
             href={whatsappShareUrl(shareText, shareUrl)}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() =>
+              track(EV.share, { kind: "quiz_result", festId: fest.id, channel: "whatsapp" })
+            }
             className="rounded-lg border border-brand-500/60 bg-brand-500/10 px-4 py-2 text-sm font-medium text-brand-200 hover:bg-brand-500/20"
           >
             Share result

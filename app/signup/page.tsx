@@ -59,6 +59,10 @@ function SignupForm() {
     registerOwnCode(email.trim().toLowerCase(), displayName);
     if (ref) applyReferral(email.trim().toLowerCase(), ref);
 
+    void import("@/lib/analytics").then(({ EV, track }) =>
+      track(EV.signUp, { mode: result.mode, referred: !!ref }),
+    );
+
     if (result.mode === "supabase" && result.needsEmailConfirmation) {
       setMessage(
         `Account created. Check ${email} for a confirmation link, then sign in.`,

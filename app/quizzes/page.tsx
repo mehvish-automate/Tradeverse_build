@@ -179,6 +179,9 @@ function JoinByCode({ onJoined }: { onJoined: (f: Fest) => void }) {
       setError(r.error);
       return;
     }
+    void import("@/lib/analytics").then(({ EV, track }) =>
+      track(EV.joinByCode, { festId: r.fest.id, eventType: r.fest.eventType ?? "" }),
+    );
     onJoined(r.fest);
   }
 

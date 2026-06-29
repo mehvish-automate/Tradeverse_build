@@ -791,3 +791,30 @@ create index if not exists notification_reads_user_idx  on public.notification_r
 create index if not exists alerts_user_idx              on public.alerts(user_id, created_at desc);
 create index if not exists share_clicks_inviter_idx     on public.share_clicks(inviter_id, clicked_at desc);
 create index if not exists share_joins_inviter_idx      on public.share_joins(inviter_id, joined_at desc);
+
+-- ============================================================================
+-- Phase 65 — First-party analytics events
+-- ============================================================================
+-- Append-only funnel events (sign-up, quiz start/finish, launch, join,
+-- share, daily finish). Anonymous (signed-out) events are dropped at the
+-- application layer; RLS pins every row to its author. props is free-form
+-- jsonb so new events don't need migrations.
+create table if not exists public.analytics_events (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users on delete cascade,
+  device_id    text not null,
+  name         text not null,
+  props        jsonb not null default '{}'::jsonb,
+  path         text,
+  occurred_at  timestamptz not null default now()
+);
+
+alter table public.analytics_events enable row level security;
+
+drop policy if exists "own analytics" on public.analytics_events;
+create policy "own analytics"
+  on public.analytics_events for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+create index if not exists analytics_user_idx on public.analytics_events(user_id, occurred_at desc);
+create index if not exists analytics_name_idx on public.analytics_events(name, occurred_at desc);

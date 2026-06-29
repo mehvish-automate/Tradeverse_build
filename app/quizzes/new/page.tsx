@@ -125,6 +125,14 @@ function Inner() {
       setSubmitting(false);
       return;
     }
+    const { EV, track } = await import("@/lib/analytics");
+    track(EV.quizLaunch, {
+      festId: r.fest.id,
+      privacy,
+      memberCap,
+      source,
+      needsApproval: r.needsApproval,
+    });
     setSubmitting(false);
     router.push(`/fests/${r.fest.id}`);
   }
