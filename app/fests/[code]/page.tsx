@@ -20,6 +20,8 @@ import {
   getOfficialTournament,
   isOfficial,
 } from "@/lib/officialTournaments";
+import { QuizLeaderRow, quizLeaderboard } from "@/lib/quizLeaderboard";
+import { pickQuizQuestions } from "@/lib/quizQuestions";
 import { useSession } from "@/lib/session";
 import { useRealtimeLeaderboards } from "@/lib/supabase/realtime";
 import { pullScoresFor } from "@/lib/supabase/scores-sync";
@@ -126,8 +128,13 @@ function FestInner() {
   const status = festStatus(fest);
 
   void scoresTick;
+  const isQuiz = fest.eventType === "quiz";
+  const quizTotal = isQuiz ? pickQuizQuestions(fest).length : 0;
+  const quizRows = isQuiz ? quizLeaderboard(fest, user.email, quizTotal) : [];
   const rows = festLeaderboard(fest, user.email);
-  const myRank = rows.findIndex((r) => r.email === user.email) + 1;
+  const myRank = isQuiz
+    ? quizRows.findIndex((r) => r.isYou && r.played) + 1
+    : rows.findIndex((r) => r.email === user.email) + 1;
 
   return (
     <>
@@ -236,7 +243,7 @@ function FestInner() {
                   `&context=${encodeURIComponent(fest.name)}` +
                   `&rank=${myRank}` +
                   `&outOf=${fest.participants.length}` +
-                  `&xp=${rows[myRank - 1]?.xp ?? 0}`
+                  `&xp=${(isQuiz ? quizRows[myRank - 1]?.score : rows[myRank - 1]?.xp) ?? 0}`
                 }
                 className="rounded-md border border-ink-700 px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-200 hover:bg-ink-900"
               >
@@ -245,45 +252,49 @@ function FestInner() {
             )}
           </span>
         </header>
-        <ol className="divide-y divide-ink-900">
-          {rows.map((r, i) => {
-            const you = r.email === user.email;
-            return (
-              <li
-                key={r.email}
-                className={
-                  "flex items-center justify-between px-5 py-3 text-sm " +
-                  (you ? "bg-brand-500/5" : "")
-                }
-              >
-                <span className="flex items-center gap-3">
-                  <span
-                    className={
-                      "inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold " +
-                      (i === 0
-                        ? "bg-brand-500 text-ink-950"
-                        : i < 3
-                          ? "bg-ink-800 text-ink-100"
-                          : "bg-ink-900 text-ink-400")
-                    }
-                  >
-                    {i + 1}
+        {isQuiz ? (
+          <QuizBoard rows={quizRows} />
+        ) : (
+          <ol className="divide-y divide-ink-900">
+            {rows.map((r, i) => {
+              const you = r.email === user.email;
+              return (
+                <li
+                  key={r.email}
+                  className={
+                    "flex items-center justify-between px-5 py-3 text-sm " +
+                    (you ? "bg-brand-500/5" : "")
+                  }
+                >
+                  <span className="flex items-center gap-3">
+                    <span
+                      className={
+                        "inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold " +
+                        (i === 0
+                          ? "bg-brand-500 text-ink-950"
+                          : i < 3
+                            ? "bg-ink-800 text-ink-100"
+                            : "bg-ink-900 text-ink-400")
+                      }
+                    >
+                      {i + 1}
+                    </span>
+                    <span className={you ? "font-medium text-ink-50" : "text-ink-200"}>
+                      {r.handle}
+                      {you && <span className="ml-2 text-xs text-brand-300">you</span>}
+                    </span>
                   </span>
-                  <span className={you ? "font-medium text-ink-50" : "text-ink-200"}>
-                    {r.handle}
-                    {you && <span className="ml-2 text-xs text-brand-300">you</span>}
+                  <span className="flex items-center gap-5 text-xs text-ink-400">
+                    <span>{r.plays} plays</span>
+                    <span className="font-mono text-ink-50">
+                      {r.xp.toLocaleString()} XP
+                    </span>
                   </span>
-                </span>
-                <span className="flex items-center gap-5 text-xs text-ink-400">
-                  <span>{r.plays} plays</span>
-                  <span className="font-mono text-ink-50">
-                    {r.xp.toLocaleString()} XP
-                  </span>
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </section>
 
       <div className="mt-6 flex flex-wrap gap-3">
@@ -313,10 +324,59 @@ function FestInner() {
       </div>
 
       <p className="mt-4 text-xs text-ink-500">
-        V1 note: peer scores are deterministic demo data based on their
-        handles until the backend lands — your own row uses your real
-        window-to-date XP.
+        {isQuiz
+          ? "V1 note: peer scores are deterministic demo data until cloud sync lands — your own row uses your real best attempt. Play to set or beat it."
+          : "V1 note: peer scores are deterministic demo data based on their handles until the backend lands — your own row uses your real window-to-date XP."}
       </p>
     </>
+  );
+}
+
+function QuizBoard({ rows }: { rows: QuizLeaderRow[] }) {
+  return (
+    <ol className="divide-y divide-ink-900">
+      {rows.map((r, i) => (
+        <li
+          key={r.email}
+          className={
+            "flex items-center justify-between px-5 py-3 text-sm " +
+            (r.isYou ? "bg-brand-500/5" : "")
+          }
+        >
+          <span className="flex items-center gap-3">
+            <span
+              className={
+                "inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold " +
+                (r.played && i === 0
+                  ? "bg-brand-500 text-ink-950"
+                  : i < 3
+                    ? "bg-ink-800 text-ink-100"
+                    : "bg-ink-900 text-ink-400")
+              }
+            >
+              {i + 1}
+            </span>
+            <span className={r.isYou ? "font-medium text-ink-50" : "text-ink-200"}>
+              {r.handle}
+              {r.isYou && <span className="ml-2 text-xs text-brand-300">you</span>}
+            </span>
+          </span>
+          <span className="flex items-center gap-5 text-xs text-ink-400">
+            {r.played ? (
+              <>
+                <span>
+                  {r.correct}/{r.total} · {r.accuracy}%
+                </span>
+                <span className="font-mono text-ink-50">
+                  {r.score.toLocaleString()} pts
+                </span>
+              </>
+            ) : (
+              <span className="italic text-ink-500">not played yet</span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ol>
   );
 }

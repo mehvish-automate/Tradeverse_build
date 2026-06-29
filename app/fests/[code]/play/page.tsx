@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { QuizRunner } from "@/components/QuizRunner";
 import { RequireAuth } from "@/components/RequireAuth";
-import { Fest, festStatus, getFest, joinFest } from "@/lib/fests";
+import { Fest, FestQuestion, festStatus, getFest, joinFest } from "@/lib/fests";
 import {
   QUIZ_SECONDS_PER_QUESTION,
   QuizAttempt,
@@ -20,7 +20,12 @@ import {
   quizAccuracy,
   saveAttempt,
 } from "@/lib/quizPlay";
+import {
+  myQuizRank,
+  quizQuestionPctCorrect,
+} from "@/lib/quizLeaderboard";
 import { pickQuizQuestions } from "@/lib/quizQuestions";
+import { cardUrl, whatsappShareUrl } from "@/lib/shareCards";
 import { useSession } from "@/lib/session";
 
 export default function QuizPlayPage() {
@@ -159,12 +164,13 @@ function Inner() {
   }
 
   if (stage === "done" && result) {
-    const a = result.attempt;
     return (
       <Results
-        festId={fest.id}
-        festName={fest.name}
-        attempt={a}
+        fest={fest}
+        questions={questions}
+        viewerEmail={user.email}
+        viewerHandle={user.displayName}
+        attempt={result.attempt}
         improved={result.improved}
         onReplay={() => {
           setResult(null);
@@ -222,52 +228,141 @@ function Inner() {
 }
 
 function Results({
-  festId,
-  festName,
+  fest,
+  questions,
+  viewerEmail,
+  viewerHandle,
   attempt,
   improved,
   onReplay,
 }: {
-  festId: string;
-  festName: string;
+  fest: Fest;
+  questions: FestQuestion[];
+  viewerEmail: string;
+  viewerHandle: string;
   attempt: QuizAttempt;
   improved: boolean;
   onReplay: () => void;
 }) {
   const acc = quizAccuracy(attempt);
+  const rank = myQuizRank(fest, viewerEmail, attempt.total);
+  const outOf = fest.participants.length;
+
+  const promptById = new Map(questions.map((q) => [q.id, q.prompt]));
+  const fastestCorrect = attempt.answers
+    .filter((a) => a.correct)
+    .reduce<number | null>((min, a) => (min == null ? a.msTaken : Math.min(min, a.msTaken)), null);
+
+  const shareUrl = cardUrl({
+    kind: "rank",
+    handle: viewerHandle,
+    context: fest.name,
+    rank: rank || outOf,
+    outOf,
+    xp: attempt.score,
+  });
+  const shareText = `I scored ${attempt.score} pts (${acc}%) in "${fest.name}" on TradeVerse.`;
+
   return (
-    <div className="rounded-2xl border border-brand-500/40 bg-brand-500/5 p-8 text-center">
-      <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
-        {festName}
-      </div>
-      <div className="mt-2 text-5xl font-semibold">{attempt.score}</div>
-      <div className="mt-1 text-sm text-ink-300">points</div>
-      {improved && (
-        <div className="mt-2 inline-block rounded-md bg-brand-500/15 px-2 py-0.5 text-xs font-semibold text-brand-300">
-          New personal best 🎉
+    <div>
+      <div className="rounded-2xl border border-brand-500/40 bg-brand-500/5 p-8 text-center">
+        <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
+          {fest.name}
         </div>
-      )}
+        <div className="mt-2 text-5xl font-semibold">{attempt.score}</div>
+        <div className="mt-1 text-sm text-ink-300">points</div>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+          {rank > 0 && (
+            <span className="rounded-md bg-ink-900 px-2 py-0.5 text-xs font-semibold text-ink-100">
+              #{rank} of {outOf}
+            </span>
+          )}
+          {improved && (
+            <span className="rounded-md bg-brand-500/15 px-2 py-0.5 text-xs font-semibold text-brand-300">
+              New personal best 🎉
+            </span>
+          )}
+        </div>
 
-      <div className="mx-auto mt-6 grid max-w-md grid-cols-3 gap-3 text-sm">
-        <Stat label="Correct" value={`${attempt.correct}/${attempt.total}`} />
-        <Stat label="Accuracy" value={`${acc}%`} />
-        <Stat label="Time" value={`${(attempt.totalMs / 1000).toFixed(1)}s`} />
+        <div className="mx-auto mt-6 grid max-w-md grid-cols-3 gap-3 text-sm">
+          <Stat label="Correct" value={`${attempt.correct}/${attempt.total}`} />
+          <Stat label="Accuracy" value={`${acc}%`} />
+          <Stat label="Time" value={`${(attempt.totalMs / 1000).toFixed(1)}s`} />
+        </div>
+
+        {fastestCorrect != null && (
+          <p className="mt-4 text-xs text-ink-400">
+            ⚡ Fastest correct answer: {(fastestCorrect / 1000).toFixed(1)}s
+          </p>
+        )}
+
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <button onClick={onReplay} className="btn-ghost">
+            Play again
+          </button>
+          <a
+            href={whatsappShareUrl(shareText, shareUrl)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg border border-brand-500/60 bg-brand-500/10 px-4 py-2 text-sm font-medium text-brand-200 hover:bg-brand-500/20"
+          >
+            Share result
+          </a>
+          <Link
+            href={`/fests/${fest.id}`}
+            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-brand-300"
+          >
+            Leaderboard →
+          </Link>
+        </div>
       </div>
 
-      <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <button onClick={onReplay} className="btn-ghost">
-          Play again
-        </button>
-        <Link
-          href={`/fests/${festId}`}
-          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-brand-300"
-        >
-          Back to quiz →
-        </Link>
-      </div>
+      <section className="mt-6 rounded-2xl border border-ink-700 bg-ink-900/40">
+        <header className="border-b border-ink-700/70 px-5 py-3 text-xs font-medium uppercase tracking-wider text-ink-400">
+          Question breakdown
+        </header>
+        <ol className="divide-y divide-ink-900">
+          {attempt.answers.map((a, i) => {
+            const community = quizQuestionPctCorrect(fest.id, a.questionId);
+            return (
+              <li key={a.questionId + i} className="px-5 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span
+                        className={
+                          "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold " +
+                          (a.correct
+                            ? "bg-brand-500 text-ink-950"
+                            : "bg-red-500/20 text-red-300")
+                        }
+                      >
+                        {a.correct ? "✓" : a.chosen == null ? "⏱" : "✗"}
+                      </span>
+                      <span className="truncate text-ink-200">
+                        {promptById.get(a.questionId) ?? `Question ${i + 1}`}
+                      </span>
+                    </div>
+                    <div className="mt-1 pl-7 text-xs text-ink-500">
+                      {a.chosen == null
+                        ? "Timed out"
+                        : `Your time ${(a.msTaken / 1000).toFixed(1)}s`}{" "}
+                      · {community}% of players got this right
+                    </div>
+                  </div>
+                  <span className="shrink-0 font-mono text-xs text-ink-300">
+                    +{a.points}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
 
-      <p className="mt-4 text-xs text-ink-500">
-        Live multiplayer rooms and the full leaderboard land in the next phases.
+      <p className="mt-4 text-center text-xs text-ink-500">
+        Peer scores and community percentages are V1 stand-ins until cloud
+        sync lands — your own score is real. Live multiplayer rooms come next.
       </p>
     </div>
   );
