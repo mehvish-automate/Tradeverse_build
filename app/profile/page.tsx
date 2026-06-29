@@ -23,6 +23,7 @@ import { myAllocation } from "@/lib/eventPortfolios";
 import { getHomeInstitute } from "@/lib/onboarding";
 import { myFests } from "@/lib/fests";
 import { getProgress } from "@/lib/progress";
+import { isAdminLocal } from "@/lib/supabase/sync";
 import { viewQuests } from "@/lib/quests";
 import { ageFromDob, useSession } from "@/lib/session";
 
@@ -407,6 +408,11 @@ function ProfileInner() {
         <Link href="/settings" className="hover:text-ink-100">
           Settings →
         </Link>
+        {isAdminLocal(user.email) && (
+          <Link href="/admin/fests" className="text-amber-300 hover:text-amber-200">
+            Admin · Approvals →
+          </Link>
+        )}
       </div>
     </>
   );

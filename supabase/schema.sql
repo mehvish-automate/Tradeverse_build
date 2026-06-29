@@ -818,3 +818,51 @@ create policy "own analytics"
 
 create index if not exists analytics_user_idx on public.analytics_events(user_id, occurred_at desc);
 create index if not exists analytics_name_idx on public.analytics_events(name, occurred_at desc);
+
+-- ============================================================================
+-- Phase 52 — Near-live Quiz Floor rooms (polling)
+-- ============================================================================
+-- quiz_attempts: one best attempt per (quiz, player). Readable by any
+-- authenticated user (the live standings are shared among players);
+-- writable only by its owner. quiz_rooms: a host-controlled lobby ->
+-- live -> ended state players poll to feel the room go live.
+create table if not exists public.quiz_attempts (
+  fest_id      text not null,
+  user_id      uuid not null references auth.users on delete cascade,
+  display_name text not null,
+  score        integer not null default 0,
+  correct      integer not null default 0,
+  total        integer not null default 0,
+  total_ms     integer not null default 0,
+  played_at    timestamptz not null default now(),
+  primary key (fest_id, user_id)
+);
+
+create table if not exists public.quiz_rooms (
+  fest_id     text primary key,
+  host_id     uuid not null references auth.users on delete cascade,
+  state       text not null default 'lobby' check (state in ('lobby','live','ended')),
+  started_at  timestamptz,
+  updated_at  timestamptz not null default now()
+);
+
+alter table public.quiz_attempts enable row level security;
+alter table public.quiz_rooms    enable row level security;
+
+drop policy if exists "quiz_attempts read"      on public.quiz_attempts;
+drop policy if exists "quiz_attempts write own" on public.quiz_attempts;
+create policy "quiz_attempts read"
+  on public.quiz_attempts for select to authenticated using (true);
+create policy "quiz_attempts write own"
+  on public.quiz_attempts for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists "quiz_rooms read"       on public.quiz_rooms;
+drop policy if exists "quiz_rooms host write" on public.quiz_rooms;
+create policy "quiz_rooms read"
+  on public.quiz_rooms for select to authenticated using (true);
+create policy "quiz_rooms host write"
+  on public.quiz_rooms for all to authenticated
+  using (host_id = auth.uid()) with check (host_id = auth.uid());
+
+create index if not exists quiz_attempts_fest_idx on public.quiz_attempts(fest_id, score desc);

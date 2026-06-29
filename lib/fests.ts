@@ -324,6 +324,40 @@ export function joinFest(
   return { ok: true, fest };
 }
 
+// --- Admin approval ---
+
+/** Fests/quizzes awaiting admin review in the local store on this device. */
+export function pendingFestsLocal(): Fest[] {
+  return readFests()
+    .filter((f) => f.lifecycleStatus === "pending_approval")
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/**
+ * Admin decision on a fest/quiz. Updates the local store immediately so
+ * the host sees it flip on this device, and fire-and-forget mirrors the
+ * new status to the cloud so their other devices converge on next pull.
+ * Returns the updated fest, or null if it isn't in this device's store
+ * (cloud-only pending — the caller should still write the cloud status).
+ */
+export function decideFest(id: string, status: "live" | "rejected"): Fest | null {
+  const all = readFests();
+  const f = all.find((x) => x.id === id.toUpperCase());
+  if (f) {
+    f.lifecycleStatus = status;
+    writeFests(all);
+  }
+  void (async () => {
+    try {
+      const { setFestStatus } = await import("./supabase/writes");
+      await setFestStatus(id.toUpperCase(), status);
+    } catch {
+      /* best-effort */
+    }
+  })();
+  return f ?? null;
+}
+
 // --- Scoring ---
 
 export type FestStatus = "upcoming" | "live" | "ended";

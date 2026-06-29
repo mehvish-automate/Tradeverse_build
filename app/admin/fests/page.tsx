@@ -8,23 +8,23 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { useSession } from "@/lib/session";
 import { isAdminLocal } from "@/lib/supabase/sync";
 import { Skeleton } from "@/components/Skeleton";
-import {
-  listPendingFests,
-  setFestStatus,
-} from "@/lib/supabase/writes";
+import { decideFest, pendingFestsLocal } from "@/lib/fests";
+import { listPendingFests, setFestStatus } from "@/lib/supabase/writes";
 
-type PendingRow = {
+// Normalized review row, merged from the cloud queue + this device's
+// local store (so quizzes created offline / before a cloud round-trip
+// still surface for review).
+type Row = {
   id: string;
   name: string;
   privacy: "public" | "private";
-  club_id: string;
-  event_type: string;
+  eventType: string;
   difficulty: string;
   categories: string[];
-  start_date: string;
-  end_date: string;
-  created_by: string;
-  created_at: string;
+  startDate: string;
+  endDate: string;
+  createdAt: number;
+  origin: "cloud" | "local";
 };
 
 export default function AdminFestsPage() {
@@ -42,12 +42,39 @@ export default function AdminFestsPage() {
 
 function Inner() {
   const { user } = useSession();
-  const [rows, setRows] = useState<PendingRow[] | null>(null);
+  const [rows, setRows] = useState<Row[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const data = await listPendingFests();
-    setRows(data ?? []);
+    const cloud = (await listPendingFests()) ?? [];
+    const cloudRows: Row[] = cloud.map((r) => ({
+      id: r.id,
+      name: r.name,
+      privacy: r.privacy,
+      eventType: r.event_type,
+      difficulty: r.difficulty,
+      categories: r.categories ?? [],
+      startDate: r.start_date,
+      endDate: r.end_date,
+      createdAt: new Date(r.created_at).getTime(),
+      origin: "cloud",
+    }));
+    const localRows: Row[] = pendingFestsLocal().map((f) => ({
+      id: f.id,
+      name: f.name,
+      privacy: f.privacy ?? "private",
+      eventType: f.eventType ?? "quiz",
+      difficulty: f.difficulty ?? "intermediate",
+      categories: f.categories ?? [],
+      startDate: f.startDate,
+      endDate: f.endDate,
+      createdAt: f.createdAt,
+      origin: "local",
+    }));
+    const byId = new Map<string, Row>();
+    for (const r of localRows) byId.set(r.id, r);
+    for (const r of cloudRows) byId.set(r.id, r); // cloud wins on overlap
+    setRows([...byId.values()].sort((a, b) => b.createdAt - a.createdAt));
   }, []);
 
   useEffect(() => {
@@ -77,9 +104,13 @@ function Inner() {
 
   async function decide(id: string, next: "live" | "rejected") {
     setBusyId(id);
-    const ok = await setFestStatus(id, next);
+    // Updates the local store (if present) + fire-and-forget cloud mirror.
+    const local = decideFest(id, next);
+    // Cloud-only pending (not in this device's store) still needs the
+    // cloud status written directly.
+    if (!local) await setFestStatus(id, next);
     setBusyId(null);
-    if (ok) void refresh();
+    void refresh();
   }
 
   return (
@@ -88,19 +119,13 @@ function Inner() {
         <div className="text-xs font-medium uppercase tracking-[0.18em] text-brand-300">
           Admin
         </div>
-        <h1 className="mt-1 text-3xl font-semibold">Fest approvals</h1>
+        <h1 className="mt-1 text-3xl font-semibold">Quiz Floor &amp; event approvals</h1>
         <p className="mt-2 text-sm text-ink-400">
-          Public fests land here for review. Approve to set status &quot;live&quot;,
-          reject to mark rejected. Private fests go live instantly.
+          Public Quiz Floors and events — plus any private quiz above 100
+          participants — land here for review. Approve to set status
+          &quot;live&quot;, reject to mark rejected. Private under-100 quizzes
+          go live instantly.
         </p>
-        <div className="mt-3">
-          <Link
-            href="/admin/floors"
-            className="text-xs text-brand-300 hover:underline"
-          >
-            → Trade floor approvals
-          </Link>
-        </div>
       </div>
 
       {rows === null && (
@@ -133,7 +158,7 @@ function Inner() {
                     {r.privacy}
                   </span>
                   <span className="rounded-md bg-ink-900 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-ink-400">
-                    {r.event_type}
+                    {r.eventType}
                   </span>
                   <span className="rounded-md bg-ink-900 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-ink-400">
                     {r.difficulty}
@@ -148,8 +173,9 @@ function Inner() {
                   ))}
                 </div>
                 <div className="mt-0.5 text-xs text-ink-500">
-                  Code {r.id} · {r.start_date} → {r.end_date} · created{" "}
-                  {new Date(r.created_at).toLocaleString()}
+                  Code {r.id} · {r.startDate} → {r.endDate} · created{" "}
+                  {new Date(r.createdAt).toLocaleString()} ·{" "}
+                  <span className="uppercase tracking-wider">{r.origin}</span>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">

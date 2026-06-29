@@ -79,7 +79,12 @@ function Inner() {
   const onFinish = useCallback(
     (attempt: QuizAttempt) => {
       if (!user) return;
-      const { improved } = saveAttempt(user.email, attempt);
+      const { best, improved } = saveAttempt(user.email, attempt);
+      // Mirror the best attempt to the cloud so other players' polling
+      // picks up the live standings (Phase 52). Fire-and-forget.
+      void import("@/lib/supabase/quiz-sync").then(({ mirrorQuizAttempt }) =>
+        mirrorQuizAttempt(best, user.displayName),
+      );
       track(EV.quizFinish, {
         festId: attempt.festId,
         score: attempt.score,
