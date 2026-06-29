@@ -271,7 +271,7 @@ function Grid({ entries }: { entries: MarketplaceEntry[] }) {
 function EntryCard({ entry }: { entry: MarketplaceEntry }) {
   const { fest, official, category, sponsor } = entry;
   const status = festStatus(fest);
-  const club = official ? null : getClub(fest.clubId);
+  const club = official || !fest.clubId ? null : getClub(fest.clubId);
   const inst = club ? getInstitute(club.instituteId) : null;
 
   return (

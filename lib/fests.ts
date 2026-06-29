@@ -411,7 +411,7 @@ export function festLeaderboard(
 }
 
 export function festWhatsappInvite(fest: Fest): string {
-  const club = getClub(fest.clubId);
+  const club = fest.clubId ? getClub(fest.clubId) : null;
   const inst = club ? getInstitute(club.instituteId) : null;
   const where = club ? `${club.name}${inst ? ` (${inst.short})` : ""}` : "TradeVerse";
   const text = `Join "${fest.name}" at ${where} on TradeVerse. Code: ${fest.id} — https://tradeverse.app/fests/${fest.id}`;

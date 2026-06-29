@@ -121,7 +121,7 @@ function FestInner() {
   }
 
   const official = getOfficialTournament(fest.id);
-  const club = official ? null : getClub(fest.clubId);
+  const club = official || !fest.clubId ? null : getClub(fest.clubId);
   const inst = club ? getInstitute(club.instituteId) : null;
   const status = festStatus(fest);
 
