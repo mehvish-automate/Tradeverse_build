@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { FestQuestion } from "@/lib/fests";
 import {
-  QUIZ_TIME_LIMIT_MS,
+  QUIZ_SECONDS_PER_QUESTION,
   QuizAnswer,
   QuizAttempt,
   scoreQuizAnswer,
@@ -21,16 +21,20 @@ export function QuizRunner({
   festId,
   questions,
   onFinish,
+  secondsPerQuestion = QUIZ_SECONDS_PER_QUESTION,
 }: {
   email: string;
   festId: string;
   questions: FestQuestion[];
   onFinish: (attempt: QuizAttempt) => void;
+  /** Override the per-question countdown (e.g. relaxed practice). */
+  secondsPerQuestion?: number;
 }) {
+  const limitMs = secondsPerQuestion * 1000;
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<"question" | "reveal">("question");
   const [chosen, setChosen] = useState<number | null>(null);
-  const [remainingMs, setRemainingMs] = useState(QUIZ_TIME_LIMIT_MS);
+  const [remainingMs, setRemainingMs] = useState(limitMs);
   const answersRef = useRef<QuizAnswer[]>([]);
   const startedAt = useRef<number>(Date.now());
   const lockedRef = useRef(false);
@@ -42,19 +46,19 @@ export function QuizRunner({
     (pick: number | null) => {
       if (lockedRef.current) return;
       lockedRef.current = true;
-      const msTaken = Math.min(Date.now() - startedAt.current, QUIZ_TIME_LIMIT_MS);
+      const msTaken = Math.min(Date.now() - startedAt.current, limitMs);
       const correct = pick != null && pick === q.answer;
       answersRef.current.push({
         questionId: q.id,
         chosen: pick,
         correct,
         msTaken,
-        points: scoreQuizAnswer(correct, msTaken),
+        points: scoreQuizAnswer(correct, msTaken, limitMs),
       });
       setChosen(pick);
       setPhase("reveal");
     },
-    [q],
+    [q, limitMs],
   );
 
   // Per-question lifecycle: reset the clock on each new question, tick the
@@ -64,9 +68,9 @@ export function QuizRunner({
       lockedRef.current = false;
       startedAt.current = Date.now();
       setChosen(null);
-      setRemainingMs(QUIZ_TIME_LIMIT_MS);
+      setRemainingMs(limitMs);
       const tick = setInterval(() => {
-        const left = QUIZ_TIME_LIMIT_MS - (Date.now() - startedAt.current);
+        const left = limitMs - (Date.now() - startedAt.current);
         if (left <= 0) {
           setRemainingMs(0);
           lock(null);
@@ -99,7 +103,7 @@ export function QuizRunner({
   }, [phase, idx, questions.length, lock, onFinish, festId, email]);
 
   const reveal = phase === "reveal";
-  const pct = Math.max(0, Math.min(100, (remainingMs / QUIZ_TIME_LIMIT_MS) * 100));
+  const pct = Math.max(0, Math.min(100, (remainingMs / limitMs) * 100));
   const urgent = remainingMs <= 1500;
   const lastPoints = reveal ? answersRef.current[answersRef.current.length - 1] : null;
 

@@ -80,6 +80,17 @@ function Inner() {
       </div>
 
       <h2 className="mt-10 text-sm font-medium uppercase tracking-wider text-ink-400">
+        Play now
+      </h2>
+      <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
+        <ModeCard href="/quizzes/live" emoji="🔴" title="The Big Quiz" sub="Daily mass event · live board" accent />
+        <ModeCard href="/quizzes/daily" emoji="📅" title="Question of the Day" sub="Daily + weekly · streaks" />
+        <ModeCard href="/quizzes/quick" emoji="⚡" title="Quick play" sub="Instant 8-Q mix" />
+        <ModeCard href="/quizzes/practice" emoji="🎯" title="Topic practice" sub="By category · relaxed" />
+        <ModeCard href="/quizzes/versus" emoji="🤖" title="You vs AI" sub="Head-to-head vs a bot" />
+      </div>
+
+      <h2 className="mt-10 text-sm font-medium uppercase tracking-wider text-ink-400">
         Your Quiz Floors
       </h2>
       {mine.length === 0 ? (
@@ -124,6 +135,36 @@ function Inner() {
         </ul>
       )}
     </>
+  );
+}
+
+function ModeCard({
+  href,
+  emoji,
+  title,
+  sub,
+  accent,
+}: {
+  href: string;
+  emoji: string;
+  title: string;
+  sub: string;
+  accent?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={
+        "rounded-xl border p-4 transition " +
+        (accent
+          ? "border-brand-500/40 bg-brand-500/5 hover:border-brand-500"
+          : "border-ink-700 bg-ink-900/40 hover:border-ink-500")
+      }
+    >
+      <div className="text-xl">{emoji}</div>
+      <div className="mt-1 text-sm font-semibold text-ink-50">{title}</div>
+      <div className="text-xs text-ink-500">{sub}</div>
+    </Link>
   );
 }
 
