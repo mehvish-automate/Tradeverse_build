@@ -128,18 +128,17 @@ function Inner() {
     );
   }
 
+  const startMs = fest.startsAtMs ?? new Date(fest.startDate).getTime();
+  const endMs =
+    fest.endsAtMs ?? new Date(fest.endDate).getTime() + 24 * 60 * 60 * 1000 - 1;
+
   if (fest.lifecycleStatus === "pending_approval" || fest.lifecycleStatus === "rejected") {
     return (
-      <Shell title={fest.lifecycleStatus === "rejected" ? "Quiz rejected" : "Awaiting approval"}>
-        <p className="text-sm text-ink-400">
-          {fest.lifecycleStatus === "rejected"
-            ? "This quiz was not approved, so it can't be played."
-            : "This quiz is still awaiting admin review. Check back once it's live."}
-        </p>
-        <Link href="/quizzes" className="mt-4 inline-block btn-ghost">
-          Open Quiz Floor
-        </Link>
-      </Shell>
+      <BlockedPanel
+        fest={fest}
+        kind={fest.lifecycleStatus === "rejected" ? "rejected" : "pending"}
+        startMs={startMs}
+      />
     );
   }
 
@@ -208,11 +207,21 @@ function Inner() {
         scored on accuracy + speed. Answer fast and right to top the board.
       </p>
 
-      {status !== "live" && (
+      {status === "upcoming" && (
         <div className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-200">
-          {status === "upcoming"
-            ? "This quiz hasn't officially started — you can take it as a practice run now."
-            : "This quiz has ended — you can still play it for practice."}
+          <div className="font-medium">
+            Starts {new Date(startMs).toLocaleString()}
+          </div>
+          <div className="mt-1 text-amber-300/90">
+            Begins in <Countdown to={startMs} /> · you can take it as a
+            practice run now.
+          </div>
+        </div>
+      )}
+      {status === "ended" && (
+        <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900/40 px-4 py-3 text-sm text-ink-300">
+          This quiz ended {new Date(endMs).toLocaleString()} — you can still
+          play it for practice.
         </div>
       )}
 
@@ -407,5 +416,123 @@ function Shell({ title, children }: { title: string; children: React.ReactNode }
       <h1 className="text-xl font-semibold">{title}</h1>
       <div className="mt-2">{children}</div>
     </div>
+  );
+}
+
+/** Live HH:MM:SS countdown to a target epoch; shows "now" once reached. */
+function Countdown({ to }: { to: number }) {
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const ms = to - now;
+  if (ms <= 0) return <span>now</span>;
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    <span className="font-mono tabular-nums">
+      {d > 0 ? `${d}d ` : ""}
+      {pad(h)}:{pad(m)}:{pad(sec)}
+    </span>
+  );
+}
+
+/** Informational gate for quizzes that can't be played yet. */
+function BlockedPanel({
+  fest,
+  kind,
+  startMs,
+}: {
+  fest: Fest;
+  kind: "pending" | "rejected";
+  startMs: number;
+}) {
+  const startsInFuture = startMs > Date.now();
+  return (
+    <>
+      <div className="mb-2 text-xs">
+        <Link href={`/fests/${fest.id}`} className="text-ink-400 hover:text-ink-100">
+          ← {fest.name}
+        </Link>
+      </div>
+
+      <div
+        className={
+          "rounded-2xl border p-6 " +
+          (kind === "rejected"
+            ? "border-red-500/40 bg-red-500/5"
+            : "border-amber-500/40 bg-amber-500/5")
+        }
+      >
+        <div className="flex items-center gap-2">
+          <span
+            className={
+              "rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider " +
+              (kind === "rejected"
+                ? "bg-red-500/20 text-red-300"
+                : "bg-amber-500/20 text-amber-300")
+            }
+          >
+            {kind === "rejected" ? "Rejected" : "Pending review"}
+          </span>
+          <h1 className="text-2xl font-semibold">{fest.name}</h1>
+        </div>
+
+        {kind === "rejected" ? (
+          <p className="mt-3 text-sm text-ink-300">
+            An admin did not approve this quiz, so it can&apos;t be played. If
+            you&apos;re the host, tweak it and launch again from the Quiz Floor.
+          </p>
+        ) : (
+          <>
+            <p className="mt-3 text-sm text-ink-200">
+              This quiz is in the admin review queue. Public quizzes — and
+              private quizzes above 100 participants — are reviewed before they
+              go live. You&apos;ll be able to play once it&apos;s approved.
+            </p>
+
+            <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-ink-700 bg-ink-950/50 p-4">
+                <dt className="text-xs text-ink-500">Status</dt>
+                <dd className="mt-1 text-sm font-medium text-amber-200">
+                  Awaiting admin approval
+                </dd>
+              </div>
+              <div className="rounded-lg border border-ink-700 bg-ink-950/50 p-4">
+                <dt className="text-xs text-ink-500">
+                  {startsInFuture ? "Scheduled start" : "Scheduled window"}
+                </dt>
+                <dd className="mt-1 text-sm font-medium text-ink-100">
+                  {startsInFuture ? (
+                    <>
+                      in <Countdown to={startMs} />
+                    </>
+                  ) : (
+                    "Start time has passed — runs once approved"
+                  )}
+                </dd>
+                <dd className="mt-0.5 text-xs text-ink-500">
+                  {new Date(startMs).toLocaleString()}
+                </dd>
+              </div>
+            </dl>
+          </>
+        )}
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href={`/fests/${fest.id}`} className="btn-ghost">
+            Back to quiz
+          </Link>
+          <Link href="/quizzes" className="btn-ghost">
+            Open Quiz Floor
+          </Link>
+        </div>
+      </div>
+    </>
   );
 }

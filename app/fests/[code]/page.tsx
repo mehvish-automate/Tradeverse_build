@@ -22,6 +22,7 @@ import {
 } from "@/lib/officialTournaments";
 import { QuizLeaderRow, quizLeaderboard } from "@/lib/quizLeaderboard";
 import { pickQuizQuestions } from "@/lib/quizQuestions";
+import { isAdminLocal } from "@/lib/supabase/sync";
 import {
   CloudQuizAttempt,
   QuizRoom,
@@ -158,7 +159,19 @@ function FestInner() {
   const official = getOfficialTournament(fest.id);
   const club = official || !fest.clubId ? null : getClub(fest.clubId);
   const inst = club ? getInstitute(club.instituteId) : null;
-  const status = festStatus(fest);
+  const dateStatus = festStatus(fest);
+  const lifecycle = fest.lifecycleStatus ?? "live";
+  const isPending = lifecycle === "pending_approval";
+  const isRejected = lifecycle === "rejected";
+  // The displayed status prioritises the approval lifecycle over the
+  // date window — a pending quiz must NOT read "LIVE" just because its
+  // date window is open.
+  const displayStatus = isPending
+    ? "pending"
+    : isRejected
+      ? "rejected"
+      : dateStatus;
+  const playable = !isPending && !isRejected;
 
   void scoresTick;
   const isQuiz = fest.eventType === "quiz";
@@ -175,6 +188,7 @@ function FestInner() {
     (a, b) => b.score - a.score || a.totalMs - b.totalMs,
   );
   const isHost = isQuiz && fest.createdBy === user.email;
+  const isAdmin = isAdminLocal(user.email);
 
   async function roomAction(next: "open" | "live" | "ended") {
     if (!fest) return;
@@ -194,14 +208,18 @@ function FestInner() {
             <span
               className={
                 "rounded-md px-1.5 py-0.5 font-semibold uppercase tracking-wider " +
-                (status === "live"
-                  ? "bg-brand-500/20 text-brand-300"
-                  : status === "upcoming"
+                (isRejected
+                  ? "bg-red-500/20 text-red-300"
+                  : isPending
                     ? "bg-amber-500/20 text-amber-300"
-                    : "bg-ink-800 text-ink-400")
+                    : displayStatus === "live"
+                      ? "bg-brand-500/20 text-brand-300"
+                      : displayStatus === "upcoming"
+                        ? "bg-amber-500/20 text-amber-300"
+                        : "bg-ink-800 text-ink-400")
               }
             >
-              {status}
+              {displayStatus}
             </span>
             {official && (
               <span className="rounded-md bg-violet-500/20 px-1.5 py-0.5 font-semibold uppercase tracking-wider text-violet-300">
@@ -272,7 +290,39 @@ function FestInner() {
         </a>
       </div>
 
-      {isQuiz && (
+      {isQuiz && !playable && (
+        <div
+          className={
+            "mb-6 rounded-2xl border p-5 " +
+            (isRejected
+              ? "border-red-500/40 bg-red-500/5"
+              : "border-amber-500/40 bg-amber-500/5")
+          }
+        >
+          <div className="text-sm font-medium text-ink-100">
+            {isRejected
+              ? "This quiz was not approved."
+              : isHost
+                ? "Your quiz is awaiting admin approval."
+                : "This quiz is awaiting admin approval."}
+          </div>
+          <p className="mt-1 text-sm text-ink-300">
+            {isRejected
+              ? "It can't be played. Tweak it and launch again from the Quiz Floor."
+              : "Public quizzes — and private quizzes above 100 participants — are reviewed before going live. It'll be playable once approved."}
+          </p>
+          {isAdmin && !isRejected && (
+            <Link
+              href="/admin/fests"
+              className="mt-3 inline-block rounded-md bg-brand-500 px-3 py-1.5 text-xs font-semibold text-ink-950 hover:bg-brand-300"
+            >
+              Review in admin queue →
+            </Link>
+          )}
+        </div>
+      )}
+
+      {isQuiz && playable && (
         <RoomPanel
           room={room}
           isHost={isHost}
@@ -363,13 +413,19 @@ function FestInner() {
       </section>
 
       <div className="mt-6 flex flex-wrap gap-3">
-        {fest.eventType === "quiz" ? (
-          <Link
-            href={`/fests/${fest.id}/play`}
-            className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-ink-950 hover:bg-brand-300"
-          >
-            Play quiz →
-          </Link>
+        {isQuiz ? (
+          playable ? (
+            <Link
+              href={`/fests/${fest.id}/play`}
+              className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-ink-950 hover:bg-brand-300"
+            >
+              Play quiz →
+            </Link>
+          ) : (
+            <span className="rounded-lg border border-ink-700 bg-ink-900/40 px-5 py-2.5 text-sm text-ink-500">
+              {isRejected ? "Not available" : "Play unlocks once approved"}
+            </span>
+          )
         ) : (
           <Link
             href="/play"
