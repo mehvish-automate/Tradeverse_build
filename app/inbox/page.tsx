@@ -82,6 +82,9 @@ function InboxInner() {
           {feed.map((n) => {
             const read = isRead(user.email, n.id);
             const onClick = () => {
+              void import("@/lib/analytics").then(({ EV, track }) =>
+                track(EV.notificationOpen, { kind: n.kind ?? "", hasHref: !!n.href }),
+              );
               if (!read) {
                 markRead(user!.email, n.id);
                 refresh();

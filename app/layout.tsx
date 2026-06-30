@@ -3,6 +3,7 @@ import "./globals.css";
 
 import { InstallBanner } from "@/components/InstallBanner";
 import { PushRuntime } from "@/components/PushRuntime";
+import { ScreenTracker } from "@/components/ScreenTracker";
 import { SyncRuntime } from "@/components/SyncRuntime";
 
 export const metadata: Metadata = {
@@ -65,6 +66,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen antialiased">
         {children}
+        <ScreenTracker />
         <InstallBanner />
         <PushRuntime />
         <SyncRuntime />
