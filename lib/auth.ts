@@ -112,6 +112,27 @@ export async function signInWithPassword(input: {
   return { ok: true, needsEmailConfirmation: false };
 }
 
+export type OAuthProvider = "google" | "github" | "azure";
+
+/**
+ * Start an OAuth (SSO) sign-in. Redirects the browser to the provider,
+ * which returns to /auth/callback (code exchange) → /auth/finish (local
+ * session hydration). The provider must be enabled in the Supabase
+ * dashboard (Authentication → Providers) for this to succeed.
+ */
+export async function signInWithProvider(
+  provider: OAuthProvider,
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return { ok: false, error: "Backend auth isn't configured yet." };
+  const redirectTo =
+    (typeof window !== "undefined" ? window.location.origin : "") +
+    "/auth/callback?next=/auth/finish";
+  const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true }; // browser redirects away on success
+}
+
 /**
  * Send a password-reset email. Supabase emails the user a link that
  * lands on /auth/callback?code=...&type=recovery, which exchanges the

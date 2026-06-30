@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { Nav } from "@/components/Nav";
+import { OAuthButtons } from "@/components/OAuthButtons";
 import { signInUniversal } from "@/lib/auth";
 import { registerOwnCode } from "@/lib/referral";
 
@@ -54,7 +55,11 @@ function SigninForm() {
         Pick up your streak where you left off.
       </p>
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-4">
+      <div className="mt-8">
+        <OAuthButtons />
+      </div>
+
+      <form onSubmit={onSubmit} className="space-y-4">
         <label className="block">
           <span className="mb-1.5 block text-xs font-medium text-ink-300">
             Email

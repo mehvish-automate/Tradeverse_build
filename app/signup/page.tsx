@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { Nav } from "@/components/Nav";
+import { OAuthButtons } from "@/components/OAuthButtons";
 import { signUpUniversal } from "@/lib/auth";
 import { applyReferral, handleForCode, registerOwnCode } from "@/lib/referral";
 
@@ -94,7 +95,11 @@ function SignupForm() {
         </div>
       )}
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-4">
+      <div className="mt-8">
+        <OAuthButtons />
+      </div>
+
+      <form onSubmit={onSubmit} className="space-y-4">
           <Field label="Display name">
             <input
               type="text"
