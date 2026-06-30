@@ -66,6 +66,8 @@ export type Fest = {
   endsAtMs?: number;
   /** Phase 59 — reward tiers (non-cash: XP / coupon). */
   rewards?: RewardTier[];
+  /** Admin's reason when lifecycleStatus = 'rejected'. */
+  rejectionReason?: string;
 };
 
 /** Default missing Phase 43 fields when reading legacy fests. */
@@ -346,22 +348,49 @@ export function pendingFestsLocal(): Fest[] {
  * Returns the updated fest, or null if it isn't in this device's store
  * (cloud-only pending — the caller should still write the cloud status).
  */
-export function decideFest(id: string, status: "live" | "rejected"): Fest | null {
+export function decideFest(
+  id: string,
+  status: "live" | "rejected",
+  reason?: string,
+): Fest | null {
   const all = readFests();
   const f = all.find((x) => x.id === id.toUpperCase());
   if (f) {
     f.lifecycleStatus = status;
+    f.rejectionReason = status === "rejected" ? reason?.trim() || undefined : undefined;
     writeFests(all);
   }
   void (async () => {
     try {
       const { setFestStatus } = await import("./supabase/writes");
-      await setFestStatus(id.toUpperCase(), status);
+      await setFestStatus(id.toUpperCase(), status, reason);
     } catch {
       /* best-effort */
     }
   })();
   return f ?? null;
+}
+
+/**
+ * Edit a fest's editable fields (host or admin). Merges the patch over
+ * the stored fest, keeps the id, writes locally and mirrors to cloud.
+ */
+export function updateFest(id: string, patch: Partial<Fest>): Fest | null {
+  const all = readFests();
+  const i = all.findIndex((x) => x.id === id.toUpperCase());
+  if (i < 0) return null;
+  const updated: Fest = { ...all[i], ...patch, id: all[i].id };
+  all[i] = updated;
+  writeFests(all);
+  void (async () => {
+    try {
+      const { mirrorFest } = await import("./supabase/fest-sync");
+      await mirrorFest(updated);
+    } catch {
+      /* best-effort */
+    }
+  })();
+  return updated;
 }
 
 // --- Scoring ---

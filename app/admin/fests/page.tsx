@@ -45,6 +45,8 @@ function Inner() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [admin, setAdmin] = useState<boolean | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
 
   // Env allowlist / cached flag grants access immediately; otherwise do an
   // authoritative live DB check (which only ever upgrades to admin, so a
@@ -142,14 +144,16 @@ function Inner() {
     );
   }
 
-  async function decide(id: string, next: "live" | "rejected") {
+  async function decide(id: string, next: "live" | "rejected", reason?: string) {
     setBusyId(id);
     // Updates the local store (if present) + fire-and-forget cloud mirror.
-    const local = decideFest(id, next);
+    const local = decideFest(id, next, reason);
     // Cloud-only pending (not in this device's store) still needs the
     // cloud status written directly.
-    if (!local) await setFestStatus(id, next);
+    if (!local) await setFestStatus(id, next, reason);
     setBusyId(null);
+    setRejectingId(null);
+    setReason("");
     void refresh();
   }
 
@@ -190,10 +194,8 @@ function Inner() {
       {rows && rows.length > 0 && (
         <ul className="divide-y divide-ink-900 rounded-xl border border-ink-700 bg-ink-900/40">
           {rows.map((r) => (
-            <li
-              key={r.id}
-              className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
-            >
+            <li key={r.id} className="px-5 py-4">
+             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-ink-50">{r.name}</span>
@@ -222,10 +224,16 @@ function Inner() {
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
+                <Link
+                  href={`/fests/${r.id}/edit`}
+                  className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-200 transition hover:bg-ink-900"
+                >
+                  Edit
+                </Link>
                 <button
                   type="button"
                   disabled={busyId === r.id}
-                  onClick={() => void decide(r.id, "rejected")}
+                  onClick={() => setRejectingId(rejectingId === r.id ? null : r.id)}
                   className="rounded-md border border-red-500/40 px-3 py-1.5 text-xs text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
                 >
                   Reject
@@ -239,6 +247,43 @@ function Inner() {
                   {busyId === r.id ? "Working…" : "Approve"}
                 </button>
               </div>
+             </div>
+
+              {rejectingId === r.id && (
+                <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/5 p-3">
+                  <label className="block text-xs font-medium text-red-200">
+                    Reason for rejection (shown to the host)
+                  </label>
+                  <input
+                    className="input mt-1.5"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="e.g. Duplicate of an existing quiz; please adjust the dates."
+                    maxLength={200}
+                    autoFocus
+                  />
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={busyId === r.id || !reason.trim()}
+                      onClick={() => void decide(r.id, "rejected", reason)}
+                      className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-ink-950 transition hover:bg-red-400 disabled:opacity-50"
+                    >
+                      {busyId === r.id ? "Working…" : "Confirm reject"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRejectingId(null);
+                        setReason("");
+                      }}
+                      className="btn-ghost"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </li>
           ))}
         </ul>

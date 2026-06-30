@@ -988,3 +988,7 @@ create policy "own coupons"
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 create index if not exists coupons_user_idx on public.coupons(user_id, created_at desc);
+
+-- Admin rejection reason (surfaced to the host on a rejected quiz/event).
+alter table public.fests
+  add column if not exists rejection_reason text;

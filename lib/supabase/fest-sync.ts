@@ -45,6 +45,7 @@ export async function mirrorFest(fest: Fest): Promise<boolean> {
     ends_at: fest.endsAtMs ? new Date(fest.endsAtMs).toISOString() : null,
     member_cap: fest.memberCap ?? 50,
     rewards: fest.rewards ?? [],
+    rejection_reason: fest.rejectionReason ?? null,
   };
   const { error: festErr } = await (supabase.from("fests") as unknown as {
     upsert: (
@@ -129,6 +130,7 @@ export async function pullMyFests(): Promise<number> {
     ends_at: string | null;
     member_cap: number | null;
     rewards: unknown;
+    rejection_reason: string | null;
   };
   const festsRes = await (supabase.from("fests") as unknown as {
     select: (cols: string) => {
@@ -139,7 +141,7 @@ export async function pullMyFests(): Promise<number> {
     };
   })
     .select(
-      "id, club_id, name, description, start_date, end_date, event_type, difficulty, source, created_by, created_at, privacy, status, categories, starts_at, ends_at, member_cap, rewards",
+      "id, club_id, name, description, start_date, end_date, event_type, difficulty, source, created_by, created_at, privacy, status, categories, starts_at, ends_at, member_cap, rewards, rejection_reason",
     )
     .in("id", festIds);
   if (festsRes.error || !festsRes.data) return 0;
@@ -212,6 +214,7 @@ export async function pullMyFests(): Promise<number> {
       endsAtMs: f.ends_at ? new Date(f.ends_at).getTime() : undefined,
       memberCap: f.member_cap ?? 50,
       rewards: Array.isArray(f.rewards) ? (f.rewards as Fest["rewards"]) : [],
+      rejectionReason: f.rejection_reason ?? undefined,
     };
   });
 

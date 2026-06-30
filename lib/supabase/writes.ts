@@ -136,18 +136,23 @@ export async function setTradeFloorStatus(
 export async function setFestStatus(
   festId: string,
   status: "live" | "rejected" | "ended",
+  reason?: string,
 ): Promise<boolean> {
   const supabase = getBrowserSupabase();
   if (!supabase) return false;
+  const vals = {
+    status,
+    rejection_reason: status === "rejected" ? reason?.trim() || null : null,
+  };
   const { error } = await (supabase.from("fests") as unknown as {
-    update: (vals: { status: string }) => {
+    update: (vals: unknown) => {
       eq: (
         col: string,
         val: string,
       ) => Promise<{ error: { message: string } | null }>;
     };
   })
-    .update({ status })
+    .update(vals)
     .eq("id", festId);
   return !error;
 }

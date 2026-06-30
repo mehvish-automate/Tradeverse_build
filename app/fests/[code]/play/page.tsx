@@ -484,10 +484,18 @@ function BlockedPanel({
         </div>
 
         {kind === "rejected" ? (
-          <p className="mt-3 text-sm text-ink-300">
-            An admin did not approve this quiz, so it can&apos;t be played. If
-            you&apos;re the host, tweak it and launch again from the Quiz Floor.
-          </p>
+          <>
+            <p className="mt-3 text-sm text-ink-300">
+              An admin did not approve this quiz, so it can&apos;t be played. If
+              you&apos;re the host, edit it to address the feedback and resubmit.
+            </p>
+            {fest.rejectionReason && (
+              <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                <span className="font-medium">Reason: </span>
+                {fest.rejectionReason}
+              </div>
+            )}
+          </>
         ) : (
           <>
             <p className="mt-3 text-sm text-ink-200">

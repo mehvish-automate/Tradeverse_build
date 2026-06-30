@@ -336,17 +336,33 @@ function FestInner() {
           </div>
           <p className="mt-1 text-sm text-ink-300">
             {isRejected
-              ? "It can't be played. Tweak it and launch again from the Quiz Floor."
+              ? "It can't be played as-is. Edit it to address the feedback below, then resubmit."
               : "Public quizzes — and private quizzes above 100 participants — are reviewed before going live. It'll be playable once approved."}
           </p>
-          {isAdmin && !isRejected && (
-            <Link
-              href="/admin/fests"
-              className="mt-3 inline-block rounded-md bg-brand-500 px-3 py-1.5 text-xs font-semibold text-ink-950 hover:bg-brand-300"
-            >
-              Review in admin queue →
-            </Link>
+          {isRejected && fest.rejectionReason && (
+            <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              <span className="font-medium">Reason: </span>
+              {fest.rejectionReason}
+            </div>
           )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(isHost || isAdmin) && (
+              <Link
+                href={`/fests/${fest.id}/edit`}
+                className="inline-block rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-900"
+              >
+                Edit
+              </Link>
+            )}
+            {isAdmin && !isRejected && (
+              <Link
+                href="/admin/fests"
+                className="inline-block rounded-md bg-brand-500 px-3 py-1.5 text-xs font-semibold text-ink-950 hover:bg-brand-300"
+              >
+                Review in admin queue →
+              </Link>
+            )}
+          </div>
         </div>
       )}
 
