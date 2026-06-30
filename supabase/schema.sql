@@ -992,3 +992,45 @@ create index if not exists coupons_user_idx on public.coupons(user_id, created_a
 -- Admin rejection reason (surfaced to the host on a rejected quiz/event).
 alter table public.fests
   add column if not exists rejection_reason text;
+
+-- ============================================================================
+-- Phase 53 — True real-time quiz show
+-- ============================================================================
+-- The host drives a synchronized show: quiz_rooms gains the current
+-- question index + a per-question deadline + a phase, which every client
+-- observes over Realtime. Players submit one answer per question to
+-- quiz_live_answers; the live leaderboard aggregates points from it.
+--
+-- NOTE: enable Realtime on quiz_rooms + quiz_live_answers in the Supabase
+-- dashboard (Database → Replication → supabase_realtime) so the
+-- postgres_changes subscriptions fire.
+alter table public.quiz_rooms
+  add column if not exists phase text not null default 'lobby'
+    check (phase in ('lobby','question','reveal','ended')),
+  add column if not exists current_q integer not null default -1,
+  add column if not exists q_deadline timestamptz;
+
+create table if not exists public.quiz_live_answers (
+  fest_id      text not null,
+  user_id      uuid not null references auth.users on delete cascade,
+  display_name text not null,
+  q_index      integer not null,
+  choice       integer,
+  correct      boolean not null default false,
+  ms           integer not null default 0,
+  points       integer not null default 0,
+  created_at   timestamptz not null default now(),
+  primary key (fest_id, user_id, q_index)
+);
+
+alter table public.quiz_live_answers enable row level security;
+drop policy if exists "live answers read"      on public.quiz_live_answers;
+drop policy if exists "live answers write own" on public.quiz_live_answers;
+create policy "live answers read"
+  on public.quiz_live_answers for select to authenticated using (true);
+create policy "live answers write own"
+  on public.quiz_live_answers for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+create index if not exists quiz_live_answers_fest_idx
+  on public.quiz_live_answers(fest_id, q_index);

@@ -508,7 +508,16 @@ function FestInner() {
               {isRejected ? "Not available" : "Play unlocks once approved"}
             </span>
           )
-        ) : (
+        ) : null}
+        {isQuiz && playable && (
+          <Link
+            href={`/fests/${fest.id}/live`}
+            className="rounded-lg border border-brand-500/50 bg-brand-500/10 px-5 py-2.5 text-sm font-medium text-brand-200 hover:bg-brand-500/20"
+          >
+            🔴 {isHost ? "Host live show" : "Join live show"} →
+          </Link>
+        )}
+        {!isQuiz && (
           <Link
             href="/play"
             className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-ink-950 hover:bg-brand-300"
@@ -537,7 +546,7 @@ function FestInner() {
       <p className="mt-4 text-xs text-ink-500">
         {isQuiz
           ? hasLive
-            ? "Live standings refresh every few seconds as players finish. True synchronized rooms land in the next phase."
+            ? "Standings update as players finish. For a synchronized game-show run, use the live show."
             : "No one has synced a score yet — once players finish, real live standings replace this demo board. Your own row is real."
           : "V1 note: peer scores are deterministic demo data based on their handles until the backend lands — your own row uses your real window-to-date XP."}
       </p>
