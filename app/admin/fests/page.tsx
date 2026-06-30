@@ -164,7 +164,10 @@ function Inner() {
           Public Quiz Floors and events — plus any private quiz above 100
           participants — land here for review. Approve to set status
           &quot;live&quot;, reject to mark rejected. Private under-100 quizzes
-          go live instantly.
+          go live instantly.{" "}
+          <Link href="/admin/comms" className="text-brand-300 hover:underline">
+            Broadcast →
+          </Link>
         </p>
       </div>
 

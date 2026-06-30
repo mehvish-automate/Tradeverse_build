@@ -29,12 +29,13 @@ export default function InboxPage() {
 
 function InboxInner() {
   const { user } = useSession();
-  const [feed, setFeed] = useState<Notification[]>([]);
+  const [local, setLocal] = useState<Notification[]>([]);
+  const [broadcasts, setBroadcasts] = useState<Notification[]>([]);
   const [tick, setTick] = useState(0);
 
   const refresh = useCallback(() => {
     if (!user) return;
-    setFeed(buildFeed(user.email));
+    setLocal(buildFeed(user.email));
     setTick((t) => t + 1);
   }, [user]);
 
@@ -42,8 +43,37 @@ function InboxInner() {
     refresh();
   }, [refresh]);
 
+  // Pull in-app broadcasts (comms engine) and fold them into the feed.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { pullBroadcasts } = await import("@/lib/supabase/comms-sync");
+        const rows = await pullBroadcasts();
+        if (cancelled) return;
+        setBroadcasts(
+          rows.map((b) => ({
+            id: b.id,
+            kind: "broadcast" as const,
+            title: b.subject,
+            body: b.body,
+            ts: b.createdAt,
+            emoji: "📣",
+          })),
+        );
+      } catch {
+        /* best-effort */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   if (!user) return null;
 
+  const feed = [...broadcasts, ...local].sort((a, b) => b.ts - a.ts);
   const unread = feed.filter((n) => !isRead(user.email, n.id)).length;
 
   return (

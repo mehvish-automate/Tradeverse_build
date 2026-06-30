@@ -908,3 +908,53 @@ create policy "organizer reads regs"
 
 create index if not exists event_registrations_fest_idx
   on public.event_registrations(fest_id, created_at desc);
+
+-- ============================================================================
+-- Comms engine — broadcasts (Phase 67)
+-- ============================================================================
+-- A broadcast targets an audience over a channel. In-app broadcasts are
+-- delivered by each recipient's inbox pulling rows it's allowed to read;
+-- email/whatsapp rows are campaign records (status 'queued') until a send
+-- provider is wired. Insert is allowed to admins (any audience) and event
+-- organizers (their own event).
+create table if not exists public.broadcasts (
+  id            uuid primary key default gen_random_uuid(),
+  created_by    uuid not null references auth.users on delete cascade,
+  audience      text not null check (audience in ('all','event')),
+  audience_ref  text,
+  channel       text not null check (channel in ('inapp','email','whatsapp')),
+  subject       text not null,
+  body          text not null,
+  status        text not null default 'sent' check (status in ('sent','queued')),
+  created_at    timestamptz not null default now()
+);
+
+alter table public.broadcasts enable row level security;
+
+drop policy if exists "broadcasts read"   on public.broadcasts;
+drop policy if exists "broadcasts insert"  on public.broadcasts;
+create policy "broadcasts read"
+  on public.broadcasts for select to authenticated
+  using (
+    audience = 'all'
+    or created_by = auth.uid()
+    or (
+      audience = 'event'
+      and exists (
+        select 1 from public.fest_participants fp
+        where fp.fest_id = broadcasts.audience_ref and fp.user_id = auth.uid()
+      )
+    )
+  );
+create policy "broadcasts insert"
+  on public.broadcasts for insert to authenticated
+  with check (
+    exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_admin = true)
+    or exists (
+      select 1 from public.fests f
+      where f.id = broadcasts.audience_ref and f.created_by = auth.uid()
+    )
+  );
+
+create index if not exists broadcasts_created_idx on public.broadcasts(created_at desc);
+create index if not exists broadcasts_audience_idx on public.broadcasts(audience, audience_ref);

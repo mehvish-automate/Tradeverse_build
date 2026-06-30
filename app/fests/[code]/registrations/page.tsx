@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { CommsComposer } from "@/components/CommsComposer";
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Skeleton } from "@/components/Skeleton";
@@ -171,10 +172,25 @@ function Inner() {
           Email all
         </a>
       </div>
-      <p className="mt-2 text-xs text-ink-500">
-        Templated broadcasts (email / WhatsApp / push) land in the comms phase —
-        for now, export or email the list directly.
-      </p>
+      {/* Message registrants */}
+      {rows && rows.length > 0 && (
+        <section className="mt-6 rounded-2xl border border-ink-700 bg-ink-900/40 p-5">
+          <div className="text-xs font-medium uppercase tracking-wider text-brand-300">
+            Message registrants
+          </div>
+          <p className="mb-3 mt-1 text-xs text-ink-500">
+            Compose once; pick the channel. Email / WhatsApp queue against your
+            registrant list — connect a provider to actually deliver.
+          </p>
+          <CommsComposer
+            audience="event"
+            audienceRef={fest.id}
+            recipients={rows.map((r) => r.email)}
+            label={`${rows.length} registrants`}
+            channels={["email", "whatsapp"]}
+          />
+        </section>
+      )}
 
       {/* List */}
       <section className="mt-6 rounded-2xl border border-ink-700 bg-ink-900/40">

@@ -29,7 +29,8 @@ export type NotificationKind =
   | "session-starting"
   | "session-live"
   | "rsi-alert"
-  | "price-alert";
+  | "price-alert"
+  | "broadcast";
 
 export type Notification = {
   id: string;
