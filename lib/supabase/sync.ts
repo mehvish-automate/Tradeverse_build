@@ -262,8 +262,24 @@ export async function pullProfile(): Promise<boolean> {
   return true;
 }
 
-/** Sync read of the cached admin flag (fast first paint). */
+/**
+ * Env-based admin allowlist — a reliable escape hatch that needs no DB
+ * row or RLS. Set NEXT_PUBLIC_ADMIN_EMAILS="a@x.com,b@y.com" in the
+ * environment (e.g. Vercel) and those emails are admins immediately on
+ * the next deploy. (NEXT_PUBLIC_* is inlined at build time.)
+ */
+export function isAdminEmail(email: string): boolean {
+  const raw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || "";
+  const list = raw
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return list.includes(email.trim().toLowerCase());
+}
+
+/** Sync read: env allowlist OR the cached DB flag (fast first paint). */
 export function isAdminLocal(email: string): boolean {
+  if (isAdminEmail(email)) return true;
   if (typeof window === "undefined") return false;
   return localStorage.getItem(`tv.isAdmin.${email}`) === "1";
 }
@@ -280,6 +296,11 @@ export async function fetchIsAdmin(): Promise<boolean> {
   if (!supabase) return false;
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return false;
+  // Env allowlist short-circuits the DB lookup entirely.
+  if (auth.user.email && isAdminEmail(auth.user.email)) {
+    localStorage.setItem(`tv.isAdmin.${auth.user.email.trim().toLowerCase()}`, "1");
+    return true;
+  }
   const res = await (supabase.from("profiles") as unknown as {
     select: (cols: string) => {
       eq: (

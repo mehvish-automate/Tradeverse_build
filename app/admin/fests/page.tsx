@@ -46,12 +46,23 @@ function Inner() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [admin, setAdmin] = useState<boolean | null>(null);
 
-  // Fast cached guess first, then an authoritative live check so flipping
-  // is_admin in Supabase takes effect on reload — no sign-out/in needed.
+  // Env allowlist / cached flag grants access immediately; otherwise do an
+  // authoritative live DB check (which only ever upgrades to admin, so a
+  // missing Supabase session can't flip an allowlisted admin back to false).
   useEffect(() => {
     if (!user) return;
-    setAdmin(isAdminLocal(user.email));
-    void fetchIsAdmin().then(setAdmin);
+    if (isAdminLocal(user.email)) {
+      setAdmin(true);
+      return;
+    }
+    let cancelled = false;
+    setAdmin(null);
+    void fetchIsAdmin().then((v) => {
+      if (!cancelled) setAdmin(v);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   const refresh = useCallback(async () => {
@@ -105,14 +116,25 @@ function Inner() {
       <div className="rounded-xl border border-ink-700 bg-ink-900/40 p-6">
         <h1 className="text-xl font-semibold">Not authorized</h1>
         <p className="mt-2 text-sm text-ink-400">
-          This page is only visible to admins. Set{" "}
-          <code className="rounded bg-ink-900 px-1 text-ink-200">
-            profiles.is_admin = true
-          </code>{" "}
-          on your row in Supabase, then reload this page. If it still
-          doesn&apos;t work, confirm you&apos;re signed in with the same email
-          you set the flag on.
+          This page is only visible to admins. Two ways to grant it:
         </p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-400">
+          <li>
+            Quickest — set{" "}
+            <code className="rounded bg-ink-900 px-1 text-ink-200">
+              NEXT_PUBLIC_ADMIN_EMAILS={user.email}
+            </code>{" "}
+            in your Vercel env and redeploy (no DB needed).
+          </li>
+          <li>
+            Or set{" "}
+            <code className="rounded bg-ink-900 px-1 text-ink-200">
+              profiles.is_admin = true
+            </code>{" "}
+            on your row in Supabase, then reload. Confirm you&apos;re signed in
+            with the same email.
+          </li>
+        </ul>
         <Link href="/profile" className="mt-4 inline-block btn-ghost">
           Back to profile
         </Link>
