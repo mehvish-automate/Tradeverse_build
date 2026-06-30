@@ -23,7 +23,7 @@ import { myAllocation } from "@/lib/eventPortfolios";
 import { getHomeInstitute } from "@/lib/onboarding";
 import { myFests } from "@/lib/fests";
 import { getProgress } from "@/lib/progress";
-import { isAdminLocal } from "@/lib/supabase/sync";
+import { fetchIsAdmin, isAdminLocal } from "@/lib/supabase/sync";
 import { viewQuests } from "@/lib/quests";
 import { ageFromDob, useSession } from "@/lib/session";
 
@@ -43,6 +43,7 @@ export default function ProfilePage() {
 function ProfileInner() {
   const router = useRouter();
   const { user, signOut } = useSession();
+  const [admin, setAdmin] = useState(false);
   const [progress, setProgress] = useState({
     streak: 0,
     totalXp: 0,
@@ -63,6 +64,14 @@ function ProfileInner() {
     homeInstitute: "",
     creatorTier: "apprentice" as CreatorTier,
   });
+
+  useEffect(() => {
+    if (!user) return;
+    setAdmin(isAdminLocal(user.email));
+    void fetchIsAdmin().then((v) => {
+      if (v) setAdmin(true);
+    });
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -377,6 +386,50 @@ function ProfileInner() {
         </div>
       </section>
 
+      {admin && (
+        <section className="mt-10">
+          <div className="mb-4">
+            <div className="text-xs font-medium uppercase tracking-[0.18em] text-amber-300">
+              Admin
+            </div>
+            <h2 className="mt-1 text-xl font-semibold text-ink-50">Dashboard</h2>
+            <p className="mt-1 text-sm text-ink-400">
+              Review submissions and broadcast to your audience.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Link
+              href="/admin/fests"
+              className="group rounded-2xl border border-amber-500/40 bg-amber-500/5 p-6 hover:border-amber-500"
+            >
+              <div className="text-xs font-medium uppercase tracking-wider text-amber-300">
+                Approvals
+              </div>
+              <div className="mt-1 text-xl font-semibold">Quiz Floor &amp; events</div>
+              <p className="mt-2 text-sm text-ink-300">
+                Review and approve or reject pending quizzes and events.
+              </p>
+              <div className="mt-4 text-sm text-amber-300 group-hover:underline">Open →</div>
+            </Link>
+
+            <Link
+              href="/admin/comms"
+              className="group rounded-2xl border border-amber-500/40 bg-amber-500/5 p-6 hover:border-amber-500"
+            >
+              <div className="text-xs font-medium uppercase tracking-wider text-amber-300">
+                Broadcast
+              </div>
+              <div className="mt-1 text-xl font-semibold">Message users</div>
+              <p className="mt-2 text-sm text-ink-300">
+                Send an in-app broadcast to all users or an event&apos;s
+                participants.
+              </p>
+              <div className="mt-4 text-sm text-amber-300 group-hover:underline">Open →</div>
+            </Link>
+          </div>
+        </section>
+      )}
+
       <div className="mt-10 flex flex-wrap gap-4 text-sm text-ink-400">
         <Link href="/quests" className="hover:text-ink-100">
           Quests →
@@ -411,11 +464,6 @@ function ProfileInner() {
         <Link href="/settings" className="hover:text-ink-100">
           Settings →
         </Link>
-        {isAdminLocal(user.email) && (
-          <Link href="/admin/fests" className="text-amber-300 hover:text-amber-200">
-            Admin · Approvals →
-          </Link>
-        )}
       </div>
     </>
   );
