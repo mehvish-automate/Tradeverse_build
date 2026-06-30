@@ -755,7 +755,12 @@ begin
   on conflict (id) do nothing;
 
   insert into public.user_stats (user_id) values (new.id) on conflict (user_id) do nothing;
-  insert into public.paper_accounts (user_id) values (new.id) on conflict (user_id) do nothing;
+  -- paper_accounts PK is composite (user_id, scope_id) since Phase 45.5, so
+  -- the conflict target must include scope_id; a bare (user_id) target throws
+  -- "no unique constraint matching the ON CONFLICT specification", which
+  -- Supabase surfaces as "Database error saving new user".
+  insert into public.paper_accounts (user_id, scope_id) values (new.id, 'global')
+    on conflict (user_id, scope_id) do nothing;
 
   return new;
 end;
