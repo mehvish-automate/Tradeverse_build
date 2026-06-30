@@ -22,6 +22,10 @@ import {
 } from "@/lib/officialTournaments";
 import { QuizLeaderRow, quizLeaderboard } from "@/lib/quizLeaderboard";
 import { pickQuizQuestions } from "@/lib/quizQuestions";
+import { COMPLIANCE_DISCLOSURE, hasGrantFor, logGrant } from "@/lib/compliance";
+import { grantCoupon } from "@/lib/coupons";
+import { awardXp } from "@/lib/progress";
+import { rewardForRank, tiersSummary } from "@/lib/rewardTiers";
 import { isAdminLocal } from "@/lib/supabase/sync";
 import {
   CloudQuizAttempt,
@@ -64,6 +68,7 @@ function FestInner() {
   const [cloudAttempts, setCloudAttempts] = useState<CloudQuizAttempt[]>([]);
   const [room, setRoom] = useState<QuizRoom | null>(null);
   const [roomBusy, setRoomBusy] = useState(false);
+  const [claimed, setClaimed] = useState(false);
 
   useEffect(() => {
     if (!code || !user) return;
@@ -189,6 +194,29 @@ function FestInner() {
   );
   const isHost = isQuiz && fest.createdBy === user.email;
   const isAdmin = isAdminLocal(user.email);
+
+  // Prize pool + claim (Phases 59/61). Final rank prefers live cloud
+  // standings; reward is granted once the quiz has ended.
+  const rewardTiers = (isQuiz && fest.rewards) || [];
+  const quizEnded = isQuiz && (lifecycle === "ended" || dateStatus === "ended");
+  const claimRank = hasLive
+    ? liveRows.findIndex((r) => r.displayName === user.displayName) + 1
+    : myRank;
+  const myReward = rewardTiers.length > 0 ? rewardForRank(rewardTiers, claimRank) : null;
+  const rewardContext = `quiz:${fest.id}`;
+  const alreadyClaimed = claimed || hasGrantFor(user.email, rewardContext);
+
+  function claimReward() {
+    if (!myReward) return;
+    if (myReward.type === "xp") awardXp(user!.email, myReward.xp);
+    else if (myReward.type === "coupon") grantCoupon(user!.email, myReward.couponId, fest!.name);
+    logGrant(user!.email, {
+      rewardLabel: myReward.label,
+      type: myReward.type,
+      context: rewardContext,
+    });
+    setClaimed(true);
+  }
 
   async function roomAction(next: "open" | "live" | "ended") {
     if (!fest) return;
@@ -330,6 +358,44 @@ function FestInner() {
           playHref={`/fests/${fest.id}/play`}
           onAction={roomAction}
         />
+      )}
+
+      {isQuiz && rewardTiers.length > 0 && (
+        <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
+          <div className="text-xs font-medium uppercase tracking-wider text-amber-300">
+            🏆 Prizes
+          </div>
+          <div className="mt-1 text-sm text-ink-100">{tiersSummary(rewardTiers)}</div>
+
+          {quizEnded && myReward && !alreadyClaimed && (
+            <button
+              onClick={claimReward}
+              className="mt-3 rounded-md bg-amber-500 px-4 py-1.5 text-xs font-semibold text-ink-950 hover:bg-amber-400"
+            >
+              Claim your reward — {myReward.label} (you placed #{claimRank})
+            </button>
+          )}
+          {quizEnded && myReward && alreadyClaimed && (
+            <div className="mt-3 text-xs text-brand-300">
+              Reward claimed ✓ — {myReward.label}. See it in your{" "}
+              <Link href="/wallet" className="underline">
+                wallet
+              </Link>
+              .
+            </div>
+          )}
+          {quizEnded && !myReward && claimRank > 0 && (
+            <div className="mt-3 text-xs text-ink-500">
+              You placed #{claimRank} — outside the prize tiers this time.
+            </div>
+          )}
+          {!quizEnded && (
+            <div className="mt-2 text-xs text-ink-500">
+              Awarded to the top ranks when the quiz ends.
+            </div>
+          )}
+          <p className="mt-3 text-[11px] text-ink-500">{COMPLIANCE_DISCLOSURE}</p>
+        </div>
       )}
 
       <section className="rounded-2xl border border-ink-700 bg-ink-900/40">

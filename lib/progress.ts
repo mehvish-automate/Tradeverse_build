@@ -75,6 +75,18 @@ export function recordResult(email: string, result: DailyResult): ProgressStore 
   return next;
 }
 
+/**
+ * Add bonus XP outside the daily flow (e.g. a quiz reward grant). Returns
+ * the updated store. Does not touch streak/history.
+ */
+export function awardXp(email: string, amount: number): ProgressStore {
+  const store = read(email);
+  if (amount <= 0) return store;
+  const next: ProgressStore = { ...store, totalXp: store.totalXp + amount };
+  write(email, next);
+  return next;
+}
+
 /** Pure: score one question with a per-question time-bonus. */
 export function scoreAnswer(
   correct: boolean,

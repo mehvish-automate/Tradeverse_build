@@ -958,3 +958,33 @@ create policy "broadcasts insert"
 
 create index if not exists broadcasts_created_idx on public.broadcasts(created_at desc);
 create index if not exists broadcasts_audience_idx on public.broadcasts(audience, audience_ref);
+
+-- ============================================================================
+-- Rewards & prize pool (Phases 59-62)
+-- ============================================================================
+-- Reward tiers attach to a quiz (non-cash only: XP / coupon). The coupon
+-- wallet is per-user. Cash prizes are blocked at the application layer
+-- (lib/compliance) — these tables only ever hold XP/coupon rewards.
+alter table public.fests
+  add column if not exists rewards jsonb not null default '[]'::jsonb;
+
+create table if not exists public.coupons (
+  id           uuid primary key,
+  user_id      uuid not null references auth.users on delete cascade,
+  def_id       text not null,
+  code         text not null,
+  label        text not null,
+  discount_pct integer not null,
+  perk         text,
+  source       text,
+  used         boolean not null default false,
+  created_at   timestamptz not null default now()
+);
+
+alter table public.coupons enable row level security;
+drop policy if exists "own coupons" on public.coupons;
+create policy "own coupons"
+  on public.coupons for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+create index if not exists coupons_user_idx on public.coupons(user_id, created_at desc);

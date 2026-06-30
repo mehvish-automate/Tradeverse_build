@@ -8,6 +8,7 @@
 
 import { getClub, getInstitute } from "./clubs";
 import { getProgress } from "./progress";
+import type { RewardTier } from "./rewardTiers";
 import { lookupScore } from "./supabase/scores-sync";
 
 export type FestEventType =
@@ -63,6 +64,8 @@ export type Fest = {
   /** Optional time-of-day precision (ms epoch). Fall back to startDate. */
   startsAtMs?: number;
   endsAtMs?: number;
+  /** Phase 59 — reward tiers (non-cash: XP / coupon). */
+  rewards?: RewardTier[];
 };
 
 /** Default missing Phase 43 fields when reading legacy fests. */
@@ -72,6 +75,7 @@ function withFestDefaults(f: Fest): Fest {
     lifecycleStatus: "live",
     categories: [],
     memberCap: 50,
+    rewards: [],
     ...f,
   };
 }
@@ -180,6 +184,7 @@ export function createFest(input: {
   endsAtMs?: number;
   // Quiz-launch field
   memberCap?: number;
+  rewards?: RewardTier[];
 }): { ok: true; fest: Fest; needsApproval: boolean } | { ok: false; error: string } {
   // Club-bound flow: must be an owner. Standalone flow (clubId=null):
   // any authed user can launch — the approval gate handles abuse.
@@ -267,6 +272,7 @@ export function createFest(input: {
     categories,
     startsAtMs: input.startsAtMs,
     endsAtMs: input.endsAtMs,
+    rewards: input.rewards ?? [],
   };
   all.push(fest);
   writeFests(all);

@@ -11,6 +11,8 @@ import { useMemo, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useSession } from "@/lib/session";
+import { COMPLIANCE_DISCLOSURE } from "@/lib/compliance";
+import { REWARD_TEMPLATES, templateById, tiersSummary } from "@/lib/rewardTiers";
 import {
   FEST_DIFFICULTIES,
   FestDifficulty,
@@ -54,6 +56,7 @@ function Inner() {
     useState<FestDifficulty>("intermediate");
   const [categoriesInput, setCategoriesInput] = useState("");
   const [source, setSource] = useState<FestSource>("system");
+  const [rewardTemplate, setRewardTemplate] = useState("none");
   const [questions, setQuestions] = useState<FestQuestion[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -119,6 +122,7 @@ function Inner() {
       startsAtMs,
       endsAtMs,
       memberCap,
+      rewards: templateById(rewardTemplate)?.tiers ?? [],
     });
     if (!r.ok) {
       setError(r.error);
@@ -352,6 +356,35 @@ function Inner() {
               </ul>
             </div>
           )}
+        </Section>
+
+        <Section eyebrow="Prizes" title="Rewards (optional)">
+          <div className="flex flex-col gap-2">
+            {REWARD_TEMPLATES.map((t) => {
+              const on = rewardTemplate === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setRewardTemplate(t.id)}
+                  className={
+                    "rounded-lg border px-3 py-2.5 text-left text-xs transition " +
+                    (on
+                      ? "border-brand-500 bg-brand-500/10 text-ink-50"
+                      : "border-ink-700 text-ink-300 hover:border-ink-500")
+                  }
+                >
+                  <div className="font-medium">{t.label}</div>
+                  <div className="mt-0.5 text-[11px] text-ink-500">
+                    {t.id === "none" ? t.blurb : tiersSummary(t.tiers)}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-3 rounded-md border border-ink-800 bg-ink-950 px-3 py-2 text-[11px] text-ink-500">
+            {COMPLIANCE_DISCLOSURE}
+          </p>
         </Section>
 
         {error && (
