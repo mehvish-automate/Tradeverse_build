@@ -58,7 +58,13 @@ function SignupForm() {
 
     // Mirror: local identity is always available so the UI has a User.
     registerOwnCode(email.trim().toLowerCase(), displayName);
-    if (ref) applyReferral(email.trim().toLowerCase(), ref);
+    if (ref) {
+      applyReferral(email.trim().toLowerCase(), ref);
+      // 2° wheel — a referred signup earns a bonus spin.
+      void import("@/lib/wheel").then(({ grantBonusSpin }) =>
+        grantBonusSpin(email.trim().toLowerCase(), 1),
+      );
+    }
 
     void import("@/lib/analytics").then(({ EV, track }) =>
       track(EV.signUp, { mode: result.mode, referred: !!ref }),

@@ -78,6 +78,22 @@ function QuestsInner() {
         </span>
       </Link>
 
+      <Link
+        href="/spin"
+        className="group mb-8 flex items-center justify-between rounded-2xl border border-amber-500/40 bg-gradient-to-br from-amber-500/10 to-transparent p-5 transition hover:border-amber-500"
+      >
+        <div>
+          <div className="text-xs font-medium uppercase tracking-wider text-amber-300">
+            Daily · free spin
+          </div>
+          <div className="mt-1 text-xl font-semibold text-ink-50">Spin the wheel</div>
+          <p className="mt-1 text-sm text-ink-300">
+            One free spin a day — XP, streak freezes and perk coupons.
+          </p>
+        </div>
+        <span className="text-3xl">🎡</span>
+      </Link>
+
       {groups.map((g) => {
         const items = quests.filter((q) => q.quest.window === g.window);
         const totalClaimable = items

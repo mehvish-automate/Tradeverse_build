@@ -452,6 +452,9 @@ function ProfileInner() {
         <Link href="/store" className="hover:text-ink-100">
           Store →
         </Link>
+        <Link href="/spin" className="hover:text-ink-100">
+          Spin →
+        </Link>
         <Link href="/referrals" className="hover:text-ink-100">
           Invite friends →
         </Link>
