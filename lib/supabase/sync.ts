@@ -262,10 +262,47 @@ export async function pullProfile(): Promise<boolean> {
   return true;
 }
 
-/** Sync read of the cached admin flag. */
+/** Sync read of the cached admin flag (fast first paint). */
 export function isAdminLocal(email: string): boolean {
   if (typeof window === "undefined") return false;
   return localStorage.getItem(`tv.isAdmin.${email}`) === "1";
+}
+
+/**
+ * Authoritative admin check — queries profiles.is_admin for the current
+ * session directly, so flipping is_admin in Supabase takes effect on the
+ * next page load without a sign-out/in. Refreshes the local cache as a
+ * side effect. Returns the cached value's fallback (false) when there's
+ * no Supabase session.
+ */
+export async function fetchIsAdmin(): Promise<boolean> {
+  const supabase = getBrowserSupabase();
+  if (!supabase) return false;
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return false;
+  const res = await (supabase.from("profiles") as unknown as {
+    select: (cols: string) => {
+      eq: (
+        col: string,
+        val: string,
+      ) => {
+        maybeSingle: () => Promise<{
+          data: { is_admin: boolean | null } | null;
+          error: { message: string } | null;
+        }>;
+      };
+    };
+  })
+    .select("is_admin")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+  if (res.error || !res.data) return false;
+  const isAdmin = !!res.data.is_admin;
+  const email = (auth.user.email || "").trim().toLowerCase();
+  if (email) {
+    localStorage.setItem(`tv.isAdmin.${email}`, isAdmin ? "1" : "0");
+  }
+  return isAdmin;
 }
 
 // --- Helpers ---

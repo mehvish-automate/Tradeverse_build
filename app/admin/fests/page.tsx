@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useSession } from "@/lib/session";
-import { isAdminLocal } from "@/lib/supabase/sync";
+import { fetchIsAdmin, isAdminLocal } from "@/lib/supabase/sync";
 import { Skeleton } from "@/components/Skeleton";
 import { decideFest, pendingFestsLocal } from "@/lib/fests";
 import { listPendingFests, setFestStatus } from "@/lib/supabase/writes";
@@ -44,6 +44,15 @@ function Inner() {
   const { user } = useSession();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [admin, setAdmin] = useState<boolean | null>(null);
+
+  // Fast cached guess first, then an authoritative live check so flipping
+  // is_admin in Supabase takes effect on reload — no sign-out/in needed.
+  useEffect(() => {
+    if (!user) return;
+    setAdmin(isAdminLocal(user.email));
+    void fetchIsAdmin().then(setAdmin);
+  }, [user]);
 
   const refresh = useCallback(async () => {
     const cloud = (await listPendingFests()) ?? [];
@@ -82,7 +91,14 @@ function Inner() {
   }, [refresh]);
 
   if (!user) return null;
-  const admin = isAdminLocal(user.email);
+
+  if (admin === null) {
+    return (
+      <div className="rounded-xl border border-ink-700 bg-ink-900/40 p-6">
+        <Skeleton lines={2} />
+      </div>
+    );
+  }
 
   if (!admin) {
     return (
@@ -93,7 +109,9 @@ function Inner() {
           <code className="rounded bg-ink-900 px-1 text-ink-200">
             profiles.is_admin = true
           </code>{" "}
-          on your row in Supabase, then sign out and back in.
+          on your row in Supabase, then reload this page. If it still
+          doesn&apos;t work, confirm you&apos;re signed in with the same email
+          you set the flag on.
         </p>
         <Link href="/profile" className="mt-4 inline-block btn-ghost">
           Back to profile

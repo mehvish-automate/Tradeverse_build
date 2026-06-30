@@ -27,13 +27,13 @@ export function Hero() {
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <a
-              href="#waitlist"
+              href="/signup"
               className="rounded-lg bg-brand-500 px-5 py-3 text-sm font-medium text-ink-950 hover:bg-brand-300"
             >
-              Join the waitlist
+              Start now
             </a>
             <a
-              href="#how"
+              href="#heroes"
               className="rounded-lg border border-ink-700 px-5 py-3 text-sm font-medium text-ink-100 hover:bg-ink-900"
             >
               How it works
