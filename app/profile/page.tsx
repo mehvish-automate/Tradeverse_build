@@ -437,11 +437,20 @@ function ProfileInner() {
         <Link href="/badges" className="hover:text-ink-100">
           Badges {progress.badgesEarned}/{progress.badgesTotal} →
         </Link>
+        <Link href="/achievements" className="hover:text-ink-100">
+          Achievements →
+        </Link>
+        <Link href="/contests" className="hover:text-ink-100">
+          Contests →
+        </Link>
         <Link href="/history" className="hover:text-ink-100">
           History →
         </Link>
         <Link href="/wallet" className="hover:text-ink-100">
           Wallet →
+        </Link>
+        <Link href="/store" className="hover:text-ink-100">
+          Store →
         </Link>
         <Link href="/referrals" className="hover:text-ink-100">
           Invite friends →

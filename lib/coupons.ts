@@ -109,6 +109,26 @@ export function redeemXpForCoupon(
   return { ok: true, coupon };
 }
 
+/** Spend XP (e.g. a store purchase). Returns false if the balance is short. */
+export function spendXp(email: string, amount: number): boolean {
+  if (amount <= 0) return true;
+  if (availableXp(email) < amount) return false;
+  const w = read(email);
+  write(email, { ...w, redeemedXp: w.redeemedXp + amount });
+  return true;
+}
+
+/** Find + mark-used an unused coupon for a perk; returns it (for a discount). */
+export function consumeCouponForPerk(email: string, perk: string): Coupon | null {
+  const w = read(email);
+  const idx = w.coupons.findIndex((c) => c.perk === perk && !c.used);
+  if (idx < 0) return null;
+  const coupons = [...w.coupons];
+  coupons[idx] = { ...coupons[idx], used: true };
+  write(email, { ...w, coupons });
+  return coupons[idx];
+}
+
 /** Grant a coupon for free (e.g. a quiz reward). Does not spend XP. */
 export function grantCoupon(email: string, defId: string, source: string): Coupon | null {
   const def = couponDef(defId);
