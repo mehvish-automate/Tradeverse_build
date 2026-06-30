@@ -36,6 +36,91 @@ export async function requestPermission(): Promise<PermissionState> {
   return res as PermissionState;
 }
 
+// --- Phase 66: server push (VAPID) ---
+
+const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
+/** Push is wired only when a VAPID public key is configured. */
+export function pushConfigured(): boolean {
+  return !!VAPID_PUBLIC;
+}
+
+function urlBase64ToUint8Array(base64: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(b64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+export async function isPushSubscribed(): Promise<boolean> {
+  if (!notificationSupported()) return false;
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return false;
+  return !!(await reg.pushManager.getSubscription());
+}
+
+/** Request permission, subscribe via the SW push manager, mirror to cloud. */
+export async function subscribeToPush(): Promise<{ ok: boolean; error?: string }> {
+  if (!notificationSupported()) {
+    return { ok: false, error: "Notifications aren't supported on this device." };
+  }
+  if (!VAPID_PUBLIC) {
+    return { ok: false, error: "Push isn't configured yet (missing VAPID key)." };
+  }
+  const perm = await requestPermission();
+  if (perm !== "granted") return { ok: false, error: "Permission denied." };
+
+  const reg = (await registerSW()) ?? (await navigator.serviceWorker.ready);
+  if (!reg) return { ok: false, error: "Service worker unavailable." };
+
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
+    });
+  }
+  const { mirrorSubscription } = await import("./supabase/push-sync");
+  await mirrorSubscription(sub);
+  return { ok: true };
+}
+
+export async function unsubscribeFromPush(): Promise<void> {
+  if (!notificationSupported()) return;
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sub = reg ? await reg.pushManager.getSubscription() : null;
+  if (sub) {
+    const endpoint = sub.endpoint;
+    await sub.unsubscribe();
+    const { removeSubscription } = await import("./supabase/push-sync");
+    await removeSubscription(endpoint);
+  }
+}
+
+/** Ask the server to push a test notification to this user's devices. */
+export async function sendTestPush(): Promise<{ ok: boolean; sent?: number; error?: string }> {
+  try {
+    const res = await fetch("/api/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "TradeVerse",
+        message: "Push is working — see you on the daily challenge.",
+        target: "/play",
+      }),
+    });
+    const data = (await res.json()) as { sent?: number; configured?: boolean };
+    if (data.configured === false) {
+      return { ok: false, error: "Server push isn't configured (VAPID keys missing)." };
+    }
+    return { ok: true, sent: data.sent ?? 0 };
+  } catch {
+    return { ok: false, error: "Could not reach the push endpoint." };
+  }
+}
+
 /**
  * Show a one-off notification via the active SW (works even when the
  * tab is backgrounded or closed after SW activation — with a caveat

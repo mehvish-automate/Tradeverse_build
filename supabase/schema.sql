@@ -1034,3 +1034,25 @@ create policy "live answers write own"
 
 create index if not exists quiz_live_answers_fest_idx
   on public.quiz_live_answers(fest_id, q_index);
+
+-- ============================================================================
+-- Phase 66 — Web push subscriptions
+-- ============================================================================
+-- One row per browser push subscription. Own-rows RLS: a user manages and
+-- reads only their own subscriptions (the /api/push/send route uses the
+-- caller's own session to fetch + send, so no service role is required).
+create table if not exists public.push_subscriptions (
+  endpoint   text primary key,
+  user_id    uuid not null references auth.users on delete cascade,
+  p256dh     text not null,
+  auth       text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.push_subscriptions enable row level security;
+drop policy if exists "own push subs" on public.push_subscriptions;
+create policy "own push subs"
+  on public.push_subscriptions for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+create index if not exists push_subs_user_idx on public.push_subscriptions(user_id);

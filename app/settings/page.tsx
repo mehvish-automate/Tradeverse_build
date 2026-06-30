@@ -28,11 +28,16 @@ import {
   PermissionState,
   currentPermission,
   getReminder,
+  isPushSubscribed,
   notificationSupported,
+  pushConfigured,
   registerSW,
   requestPermission,
+  sendTestPush,
   setReminder,
   showLocalNotification,
+  subscribeToPush,
+  unsubscribeFromPush,
 } from "@/lib/webPush";
 
 export default function SettingsPage() {
@@ -60,6 +65,7 @@ function SettingsInner() {
   const [reminderOn, setReminderOn] = useState(false);
   const [remH, setRemH] = useState(19);
   const [remM, setRemM] = useState(30);
+  const [pushOn, setPushOn] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -71,7 +77,35 @@ function SettingsInner() {
     setReminderOn(r.enabled);
     setRemH(r.hour);
     setRemM(r.minute);
+    void isPushSubscribed().then(setPushOn);
   }, [user]);
+
+  async function enableServerPush() {
+    setMsg(null);
+    setErr(null);
+    const r = await subscribeToPush();
+    if (r.ok) {
+      setPushOn(true);
+      setPerm(currentPermission());
+      setMsg("Push enabled on this device.");
+    } else {
+      setErr(r.error ?? "Couldn't enable push.");
+    }
+  }
+
+  async function disableServerPush() {
+    await unsubscribeFromPush();
+    setPushOn(false);
+    setMsg("Push disabled on this device.");
+  }
+
+  async function testServerPush() {
+    setMsg(null);
+    setErr(null);
+    const r = await sendTestPush();
+    if (r.ok) setMsg(`Sent ${r.sent} push notification(s) — check your device.`);
+    else setErr(r.error ?? "Push send failed.");
+  }
 
   async function enablePush() {
     if (!user) return;
@@ -286,6 +320,42 @@ function SettingsInner() {
                 </span>
               </div>
             </Row>
+
+            {pushConfigured() && (
+              <Row label="Server push (cross-device)">
+                <div className="flex flex-wrap items-center gap-2">
+                  {pushOn ? (
+                    <>
+                      <span className="rounded-md bg-brand-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-300">
+                        on
+                      </span>
+                      <button
+                        onClick={testServerPush}
+                        className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-900"
+                      >
+                        Send test
+                      </button>
+                      <button
+                        onClick={disableServerPush}
+                        className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-900"
+                      >
+                        Disable
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={enableServerPush}
+                      className="rounded-md bg-brand-500 px-3 py-1.5 text-xs font-semibold text-ink-950 hover:bg-brand-300"
+                    >
+                      Enable push
+                    </button>
+                  )}
+                  <span className="text-xs text-ink-500">
+                    real notifications even when the tab is closed
+                  </span>
+                </div>
+              </Row>
+            )}
           </>
         ) : (
           <p className="text-sm text-ink-400">
