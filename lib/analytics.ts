@@ -46,6 +46,7 @@ export const EV = {
   quizStart: "quiz_start",
   quizFinish: "quiz_finish",
   joinByCode: "join_by_code",
+  register: "register",
   share: "share",
   ctaClick: "cta_click",
   // comms

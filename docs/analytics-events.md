@@ -33,6 +33,7 @@ Every event automatically carries, when present:
 | `quiz_start` | player starts a quiz run | `festId`, `questions`, `status` |
 | `quiz_finish` | quiz run completed | `festId`, `score`, `correct`, `total`, `totalMs`, `improved` |
 | `join_by_code` | joined a quiz/fest by invite code | `festId`, `eventType` |
+| `register` | submitted a registration via /r/<code> | `festId` |
 | `share` | shared a result/invite | `kind`, `festId`, `channel` |
 | `cta_click` | reserved for prominent CTA taps | `cta`, `screen` |
 

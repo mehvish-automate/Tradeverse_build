@@ -871,3 +871,40 @@ create policy "quiz_rooms host write"
   using (host_id = auth.uid()) with check (host_id = auth.uid());
 
 create index if not exists quiz_attempts_fest_idx on public.quiz_attempts(fest_id, score desc);
+
+-- ============================================================================
+-- Registration links — organizer lead capture for quizzes / events
+-- ============================================================================
+-- A public registration link (/r/<code>) lets prospects register interest
+-- without an account. Anyone may insert a registration; only the event's
+-- organizer (fests.created_by) can read the list. user_id is set when the
+-- registrant happens to be signed in.
+create table if not exists public.event_registrations (
+  id          uuid primary key default gen_random_uuid(),
+  fest_id     text not null,
+  name        text not null,
+  email       text not null,
+  phone       text,
+  source      text,
+  user_id     uuid references auth.users on delete set null,
+  created_at  timestamptz not null default now()
+);
+
+alter table public.event_registrations enable row level security;
+
+drop policy if exists "register insert"      on public.event_registrations;
+drop policy if exists "organizer reads regs" on public.event_registrations;
+create policy "register insert"
+  on public.event_registrations for insert to anon, authenticated
+  with check (true);
+create policy "organizer reads regs"
+  on public.event_registrations for select to authenticated
+  using (
+    exists (
+      select 1 from public.fests f
+      where f.id = event_registrations.fest_id and f.created_by = auth.uid()
+    )
+  );
+
+create index if not exists event_registrations_fest_idx
+  on public.event_registrations(fest_id, created_at desc);

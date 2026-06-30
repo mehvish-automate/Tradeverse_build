@@ -442,6 +442,14 @@ function FestInner() {
             Club
           </Link>
         )}
+        {fest.createdBy === user.email && (
+          <Link
+            href={`/fests/${fest.id}/registrations`}
+            className="rounded-lg border border-ink-700 px-5 py-2.5 text-sm text-ink-100 hover:bg-ink-900"
+          >
+            Registrations →
+          </Link>
+        )}
       </div>
 
       <p className="mt-4 text-xs text-ink-500">
